@@ -41,13 +41,14 @@ export const FarmField: React.FC = () => {
 
   const hasSprinkler = upgrades.find(u => u.id === 'up_sprinkler')?.level || 0
   const hasGreenhouse = upgrades.find(u => u.id === 'up_greenhouse')?.level || 0
+  const hasAutoTill = (upgrades.find(u => u.id === 'up_auto_till')?.level || 0) > 0
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in">
       {/* 1. 상단 컨트롤 패널: 도구 바 & 씨앗 선택 */}
       <div className="pixel-frame pixel-wood p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* 농기구 툴바 */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
           <span className="text-xs font-bold text-slate-400 mr-1 hidden sm:inline">도구:</span>
           {tools.map(tool => (
             <button
@@ -64,6 +65,12 @@ export const FarmField: React.FC = () => {
               <span>{tool.name}</span>
             </button>
           ))}
+          {hasAutoTill && (
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-900/80 text-emerald-300 border border-emerald-500/60 shadow-sm flex items-center space-x-1">
+              <span>🚜</span>
+              <span>무경운 직파 가동중</span>
+            </span>
+          )}
         </div>
 
         {/* 씨앗 선택기 */}
@@ -245,7 +252,9 @@ export const FarmField: React.FC = () => {
                   <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none z-50 bg-slate-900/95 text-[11px] font-medium text-slate-100 px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap border border-slate-600/80 drop-shadow-lg flex items-center gap-1">
                     <span>
                       {!tile.isTilled
-                        ? '호미로 땅 일구기 (미개간/훼손된 밭)'
+                        ? hasAutoTill
+                          ? '🚜 무경운 직파 가능 (씨앗 바로 심기 가능)'
+                          : '호미로 땅 일구기 (수확 후 재개간 필요)'
                         : !tile.cropId
                         ? tile.isWatered
                           ? '씨앗 심기'

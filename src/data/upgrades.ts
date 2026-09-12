@@ -36,6 +36,17 @@ export const UPGRADES: UpgradeItem[] = [
     bonusText: '사계절 무제한 작물 재배'
   },
   {
+    id: 'up_auto_till',
+    category: 'farm',
+    name: '무경운 자동 직파기 (트랙터)',
+    desc: '최첨단 무경운 직파 기술로 수확 후에도 밭의 일궈진 상태를 유지하며, 호미질 없이도 땅에 바로 씨앗을 심습니다.',
+    cost: 25000,
+    level: 0,
+    maxLevel: 1,
+    icon: '🚜',
+    bonusText: '수확 후 밭 보존 & 호미질 없이 즉시 파종'
+  },
+  {
     id: 'up_fertile_soil',
     category: 'farm',
     name: '친환경 유용미생물(EM) 비옥토',

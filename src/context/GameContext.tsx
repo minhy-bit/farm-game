@@ -365,13 +365,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const target = tiles.find(t => t.id === tileId)
-    if (!target || !target.isTilled || target.cropId) return false
+    if (!target || target.cropId) return false
+
+    const hasAutoTill = hasUpgrade('up_auto_till')
+    // 무경운 직파기가 없으면 반드시 일궈진 밭(isTilled)이어야 함
+    if (!target.isTilled && !hasAutoTill) {
+      showToast('먼저 호미로 땅을 일궈주세요.', 'warning')
+      return false
+    }
 
     setTiles(prev =>
       prev.map(tile =>
         tile.id === tileId
           ? {
               ...tile,
+              isTilled: true, // 직파기 보유 시 미개간 땅도 자동으로 일궈짐
               cropId: cropId,
               currentStage: 0,
               daysGrown: 0,
@@ -391,7 +399,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setPlayer(p => ({ ...p, stamina: Math.max(0, p.stamina - 2) }))
     SoundSystem.playPlant()
-    showToast(`${cropDef.nameKr} 씨앗을 정성껏 심었습니다!`, 'info')
+    if (!target.isTilled && hasAutoTill) {
+      showToast(`🚜 무경운 직파기로 ${cropDef.nameKr} 씨앗을 즉시 파종했습니다!`, 'info')
+    } else {
+      showToast(`${cropDef.nameKr} 씨앗을 정성껏 심었습니다!`, 'info')
+    }
     return true
   }, [inventory, hasUpgrade, player.season, player.stamina, tiles, showToast])
 
@@ -401,6 +413,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const cropId = target.cropId
     const fertileSoilLevel = upgrades.find(u => u.id === 'up_fertile_soil')?.level || 0
+    const hasAutoTill = hasUpgrade('up_auto_till')
     const rand = Math.random()
     let quality: CropQuality = 'normal'
     if (rand < 0.15 + fertileSoilLevel * 0.15) {
@@ -419,7 +432,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               daysGrown: 0,
               waterCount: 0,
               isWatered: false,
-              isTilled: true,
+              isTilled: hasAutoTill, // 직파기 보유 시에만 밭 보존, 미보유 시 다시 호미질 필요!
               quality: 'normal'
             }
           : tile
@@ -460,7 +473,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       )
     }
     return true
-  }, [tiles, upgrades, showToast])
+  }, [tiles, upgrades, hasUpgrade, showToast])
 
   const waterAllTiles = useCallback(() => {
     setTiles(prev =>
@@ -503,12 +516,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         waterTile(tileId)
       }
     } else if (selectedTool === 'hand') {
-      if (tile.isTilled && !tile.cropId) {
+      const hasAutoTill = hasUpgrade('up_auto_till')
+      if (!tile.cropId && (tile.isTilled || hasAutoTill)) {
         if (selectedSeed) {
           plantSeed(tileId, selectedSeed)
         } else {
           showToast('심을 씨앗을 선택해주세요!', 'warning')
         }
+      } else if (!tile.isTilled && !hasAutoTill) {
+        showToast('먼저 호미로 땅을 일궈주세요. (시설 확충에서 [무경운 자동 직파기] 구매 시 호미 없이 파종 가능)', 'warning')
       }
     } else if (selectedTool === 'sickle') {
       if (tile.cropId && tile.currentStage >= 3) {
@@ -517,7 +533,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast('아직 완전히 영글지 않았습니다. 정성을 들여 키워주세요.', 'info')
       }
     }
-  }, [tiles, selectedTool, selectedSeed, harvestCrop, tillTile, waterTile, plantSeed, showToast])
+  }, [tiles, selectedTool, selectedSeed, hasUpgrade, harvestCrop, tillTile, waterTile, plantSeed, showToast])
 
   // --- 날짜 및 시간 넘기기 ---
   const sleepNextDay = useCallback(() => {
