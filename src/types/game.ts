@@ -6,6 +6,7 @@ export const DAYS_PER_CYCLE = DAYS_PER_SEASON * 4 // 80일 (사계절 1사이클
 // 자연재해 및 부패 발생 확률
 export const SOIL_DECAY_RATE = 0.001 // 하루 경과 시 0.1% 확률로 밭이 무너져 호미질 다시 필요
 export const CROP_ROT_RATE = 0.002 // 하루 경과 시 매우 낮은 확률(0.2%)로 병충해/과습으로 작물이 썩어 사라짐
+export const MAX_WATER_PER_DAY = 5 // 하루에 물 5회 이상 주면 과습으로 작물 부패
 
 export type Weather = 'sunny' | 'rainy' | 'cloudy' | 'rainbow'
 
@@ -42,6 +43,7 @@ export interface FarmTile {
   cropId: string | null
   currentStage: number // 0: 씨앗, 1: 새싹, 2: 성장, 3: 완숙(수확가능)
   daysGrown?: number // 누적 생육 일수
+  waterCount?: number // 당일 누적 물 준 횟수 (5회 이상 시 과습으로 작물 부패)
   quality: CropQuality
   fertilized: boolean
 }

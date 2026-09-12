@@ -161,9 +161,20 @@ export const FarmField: React.FC = () => {
                   onClick={() => handleTileClick(tile.id)}
                   className={`relative aspect-square rounded-xl border-2 cursor-pointer transition-all duration-150 flex flex-col items-center justify-center select-none group hover:scale-[1.03] hover:z-30 active:scale-95 ${tileBg}`}
                 >
-                  {/* 물기 반짝임 효과 */}
+                  {/* 물기 반짝임 효과 및 과습 경고 */}
                   {tile.isWatered && (
-                    <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-sky-400 animate-pulse shadow-sm shadow-sky-400" />
+                    <div className="absolute top-1 right-1 flex items-center space-x-1 z-10">
+                      {tile.cropId && (tile.waterCount || 0) >= 4 ? (
+                        <span className="text-[9px] font-extrabold px-1 py-0.5 rounded bg-red-600 text-white animate-pulse shadow">
+                          과습 4/5
+                        </span>
+                      ) : tile.cropId && (tile.waterCount || 0) === 3 ? (
+                        <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-600 text-white shadow">
+                          3/5
+                        </span>
+                      ) : null}
+                      <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse shadow-sm shadow-sky-400" />
+                    </div>
                   )}
 
                   {/* 미개간 상태 작은 풀잎/돌멩이 연출 */}
@@ -241,6 +252,10 @@ export const FarmField: React.FC = () => {
                           : '물주기 또는 씨앗 심기'
                         : isMature
                         ? `✨ 클릭하여 수확! (+${crop?.yieldCount || 2}개 획득)`
+                        : (tile.waterCount || 0) >= 4
+                        ? `⚠️ ${crop?.nameKr} 과습 위험! (한 번 더 주면 썩음: ${tile.waterCount}/5회)`
+                        : (tile.waterCount || 0) >= 2
+                        ? `${crop?.nameKr} 성장중 (${tile.daysGrown || 0}/${crop?.growthDays}일) 💧물 ${tile.waterCount}/5회`
                         : `${crop?.nameKr} 성장중 (${tile.daysGrown || 0}/${crop?.growthDays}일)`}
                     </span>
                     {/* 말풍선 꼬리표 */}

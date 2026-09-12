@@ -17,7 +17,8 @@ import {
   DAYS_PER_SEASON,
   DAYS_PER_CYCLE,
   SOIL_DECAY_RATE,
-  CROP_ROT_RATE
+  CROP_ROT_RATE,
+  MAX_WATER_PER_DAY
 } from '../types/game'
 import { CROPS, CROPS_MAP } from '../data/crops'
 import { INITIAL_CONTRACTS, refreshContractsForSeason, generateRandomContract } from '../data/contracts'
@@ -115,6 +116,8 @@ function createInitialTiles(size: number): FarmTile[] {
         isWatered: false,
         cropId: null,
         currentStage: 0,
+        daysGrown: 0,
+        waterCount: 0,
         quality: 'normal',
         fertilized: false
       })
@@ -266,14 +269,81 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false
     }
     const target = tiles.find(t => t.id === tileId)
-    if (!target || !target.isTilled || target.isWatered) return false
+    if (!target || !target.isTilled) return false
 
-    setTiles(prev =>
-      prev.map(tile => (tile.id === tileId ? { ...tile, isWatered: true } : tile))
-    )
+    const currentCount = target.waterCount || 0
+    const newCount = currentCount + 1
+
     setPlayer(p => ({ ...p, stamina: Math.max(0, p.stamina - 2) }))
+
+    // 1. 작물이 심겨져 있는 경우: 물 5회 이상 주면 과습으로 작물이 썩어 사라짐!
+    if (target.cropId) {
+      const cropDef = CROPS_MAP.get(target.cropId)
+      const cropName = cropDef?.nameKr || '작물'
+
+      if (newCount >= MAX_WATER_PER_DAY) {
+        setTiles(prev =>
+          prev.map(tile =>
+            tile.id === tileId
+              ? {
+                  ...tile,
+                  cropId: null,
+                  currentStage: 0,
+                  daysGrown: 0,
+                  waterCount: 0,
+                  isWatered: true,
+                  quality: 'normal'
+                }
+              : tile
+          )
+        )
+        SoundSystem.playWither()
+        showToast(
+          `🥀 [과습 피해] 물을 너무 많이 주어(5회) ${cropName}의 뿌리가 썩어 사라졌습니다!`,
+          'warning'
+        )
+        return true
+      }
+
+      setTiles(prev =>
+        prev.map(tile =>
+          tile.id === tileId
+            ? { ...tile, isWatered: true, waterCount: newCount }
+            : tile
+        )
+      )
+      SoundSystem.playWater()
+
+      if (newCount === 4) {
+        showToast(
+          `⚠️ [과습 경고] 물이 흥건합니다! 한 번 더 물을 주면 ${cropName}이(가) 썩어버립니다! (4/5회)`,
+          'warning'
+        )
+      } else if (newCount > 1) {
+        showToast(
+          `💧 ${cropName}에 물을 더 주었습니다. (누적 ${newCount}/5회 - 과습 주의)`,
+          'info'
+        )
+      } else {
+        showToast('💧 촉촉하게 물을 주었습니다.', 'info')
+      }
+      return true
+    }
+
+    // 2. 작물이 없는 빈 밭인 경우
+    setTiles(prev =>
+      prev.map(tile =>
+        tile.id === tileId
+          ? { ...tile, isWatered: true, waterCount: newCount }
+          : tile
+      )
+    )
     SoundSystem.playWater()
-    showToast('촉촉하게 물을 주었습니다.', 'info')
+    if (newCount === 1) {
+      showToast('💧 촉촉하게 물을 주었습니다.', 'info')
+    } else {
+      showToast(`💧 이미 젖은 땅에 물을 덧뿌렸습니다. (${newCount}회)`, 'info')
+    }
     return true
   }, [player.stamina, tiles, showToast])
 
@@ -305,6 +375,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               cropId: cropId,
               currentStage: 0,
               daysGrown: 0,
+              waterCount: tile.isWatered ? 1 : 0,
               quality: 'normal'
             }
           : tile
@@ -317,10 +388,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .map(i => (i.id === seedItem.id ? { ...i, count: i.count - 1 } : i))
         .filter(i => i.count > 0)
     )
+
+    setPlayer(p => ({ ...p, stamina: Math.max(0, p.stamina - 2) }))
     SoundSystem.playPlant()
-    showToast(`${cropDef.nameKr} 씨앗을 정성껏 심었습니다.`, 'info')
+    showToast(`${cropDef.nameKr} 씨앗을 정성껏 심었습니다!`, 'info')
     return true
-  }, [inventory, hasUpgrade, player.season, tiles, showToast])
+  }, [inventory, hasUpgrade, player.season, player.stamina, tiles, showToast])
 
   const harvestCrop = useCallback((tileId: string): boolean => {
     const target = tiles.find(t => t.id === tileId)
@@ -344,6 +417,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               cropId: null,
               currentStage: 0,
               daysGrown: 0,
+              waterCount: 0,
               isWatered: false,
               isTilled: true,
               quality: 'normal'
@@ -389,7 +463,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [tiles, upgrades, showToast])
 
   const waterAllTiles = useCallback(() => {
-    setTiles(prev => prev.map(t => (t.isTilled ? { ...t, isWatered: true } : t)))
+    setTiles(prev =>
+      prev.map(t =>
+        t.isTilled
+          ? {
+              ...t,
+              isWatered: true,
+              waterCount: Math.min(MAX_WATER_PER_DAY - 1, (t.waterCount || 0) + 1)
+            }
+          : t
+      )
+    )
     SoundSystem.playWater()
     showToast('스마트 스프링클러가 전체 밭에 물을 분사했습니다!', 'info')
   }, [showToast])
@@ -413,12 +497,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast('이미 일궈진 밭입니다. 물을 주거나 씨앗을 심으세요.', 'info')
       }
     } else if (selectedTool === 'wateringCan') {
-      if (tile.isTilled && !tile.isWatered) {
-        waterTile(tileId)
-      } else if (!tile.isTilled) {
+      if (!tile.isTilled) {
         showToast('먼저 호미로 땅을 일궈주세요.', 'warning')
       } else {
-        showToast('이미 흙이 촉촉하게 젖어 있습니다.', 'info')
+        waterTile(tileId)
       }
     } else if (selectedTool === 'hand') {
       if (tile.isTilled && !tile.cropId) {
@@ -473,10 +555,28 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let collapsedCount = 0
     const rottedCropNames: string[] = []
+    const witheredSeasonCropNames: string[] = []
 
-    // 타일 작물 성장, 자연재해(밭 훼손 0.1%, 작물 부패 0.2%), 물 증발
+    // 타일 작물 성장, 자연재해(밭 훼손 0.1%, 작물 부패 0.2%), 물 증발 및 계절 변화에 따른 작물 소실
     setTiles(prev =>
       prev.map(tile => {
+        // [계절 변화 이벤트] 계절이 바뀌었을 때: 심겨져 있던 모든 작물 시들어 소실!
+        if (isSeasonChanged && tile.cropId) {
+          const cropDef = CROPS_MAP.get(tile.cropId)
+          if (cropDef) {
+            witheredSeasonCropNames.push(cropDef.nameKr)
+          }
+          return {
+            ...tile,
+            cropId: null,
+            daysGrown: 0,
+            currentStage: 0,
+            waterCount: hasSprinkler ? 1 : 0,
+            isWatered: hasSprinkler,
+            quality: 'normal'
+          }
+        }
+
         // 1. 하루가 지날 때 0.1% 확률로 밭이 망가짐 (호미질을 다시 해야 함)
         if (tile.isTilled && Math.random() < SOIL_DECAY_RATE) {
           collapsedCount++
@@ -487,6 +587,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             cropId: null,
             daysGrown: 0,
             currentStage: 0,
+            waterCount: 0,
             quality: 'normal'
           }
         }
@@ -502,6 +603,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             cropId: null,
             daysGrown: 0,
             currentStage: 0,
+            waterCount: hasSprinkler ? 1 : 0,
+            isWatered: hasSprinkler,
             quality: 'normal'
           }
         }
@@ -527,18 +630,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // 비가 오거나 스프링클러가 있으면 다음 날도 자동 급수
-        if (hasSprinkler) {
-          isWatered = true
-        } else {
-          isWatered = false // 일반 날씨는 다음 날 흙이 마름
-        }
-
+        // 다음 날 물 상태 및 waterCount 초기화 (스프링클러가 있으면 자동 급수 및 1회 부여, 없으면 마름)
         return {
           ...tile,
           daysGrown,
           currentStage,
-          isWatered
+          isWatered: hasSprinkler,
+          waterCount: hasSprinkler ? 1 : 0
         }
       })
     )
@@ -548,6 +646,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!hasColdShowcase) {
       setShelves(prev =>
         prev.map(s => (s.stock > 0 ? { ...s, freshness: Math.max(50, s.freshness - 10) } : s))
+      )
+    }
+
+    // 계절 변화로 심겨져 있던 작물이 시든 경우 알림
+    if (witheredSeasonCropNames.length > 0) {
+      SoundSystem.playWither()
+      showToast(
+        `🍂 [계절 변화] 새로운 계절이 찾아와 밭에 심겨 있던 작물(${witheredSeasonCropNames.join(', ')})이 모두 시들어 사라졌습니다.`,
+        'warning'
       )
     }
 
@@ -567,7 +674,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       )
     }
 
-    if (collapsedCount === 0 && rottedCropNames.length === 0) {
+    if (witheredSeasonCropNames.length === 0 && collapsedCount === 0 && rottedCropNames.length === 0) {
       SoundSystem.playFanfare()
     }
     if (isNewCycle) {
