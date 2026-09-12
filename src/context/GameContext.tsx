@@ -87,6 +87,8 @@ interface GameContextType {
   
   // Wholesale Actions
   fulfillContract: (contractId: string) => boolean
+  renewContract: (contractId: string) => boolean
+  refreshExpiredContracts: () => number
   
   // Restaurant & Cooking Actions
   buyRestaurant: () => boolean
@@ -811,6 +813,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSeasonChanged) {
       setContracts(prev => refreshContractsForSeason(prev, nextSeason, nextDay))
+    } else {
+      // 계절이 바뀌지 않았더라도, 마감 기한이 지난 미완료 계약(deadlineDay < nextDay)을 새 제철 계약으로 자동 갱신!
+      setContracts(prev => {
+        let expiredCount = 0
+        const activeCropIds: string[] = []
+        prev.forEach(c => {
+          if (c.isCompleted || c.deadlineDay >= nextDay) {
+            activeCropIds.push(c.cropId)
+          }
+        })
+
+        const updated = prev.map(c => {
+          if (!c.isCompleted && c.deadlineDay < nextDay) {
+            expiredCount++
+            const newCt = generateRandomContract(nextSeason, nextDay, activeCropIds)
+            activeCropIds.push(newCt.cropId)
+            return newCt
+          }
+          return c
+        })
+
+        if (expiredCount > 0) {
+          setTimeout(() => {
+            showToast(`📋 기한이 만료된 발주 계약 ${expiredCount}건이 새로운 품목 계약으로 자동 교체되었습니다.`, 'info')
+          }, 400)
+        }
+        return updated
+      })
     }
 
     // 스프링클러 여부 확인
@@ -1198,6 +1228,51 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return true
   }, [contracts, inventory, player.contractsFulfilled, player.season, player.day, showToast])
+
+  // 계약 단건 갱신 / 대체 (기한이 만료되었거나 새로운 발주서로 교체를 원할 때)
+  const renewContract = useCallback((contractId: string): boolean => {
+    const ct = contracts.find(c => c.id === contractId)
+    if (!ct) return false
+
+    setContracts(prev => {
+      const remaining = prev.filter(c => c.id !== contractId)
+      const currentCropIds = remaining.map(c => c.cropId)
+      const newContract = generateRandomContract(player.season, player.day, currentCropIds)
+      return [...remaining, newContract]
+    })
+
+    SoundSystem.playRegister()
+    showToast(`🔄 [${ct.clientName}] 발주 계약이 새로운 제철 품목으로 갱신되었습니다!`, 'info')
+    return true
+  }, [contracts, player.season, player.day, showToast])
+
+  // 기한 만료된 모든 계약 일괄 갱신
+  const refreshExpiredContracts = useCallback((): number => {
+    let replacedCount = 0
+    setContracts(prev => {
+      const remainingCropIds = prev
+        .filter(c => c.isCompleted || c.deadlineDay >= player.day)
+        .map(c => c.cropId)
+
+      return prev.map(c => {
+        if (!c.isCompleted && c.deadlineDay < player.day) {
+          replacedCount++
+          const newCt = generateRandomContract(player.season, player.day, remainingCropIds)
+          remainingCropIds.push(newCt.cropId)
+          return newCt
+        }
+        return c
+      })
+    })
+
+    if (replacedCount > 0) {
+      SoundSystem.playFanfare()
+      showToast(`🔄 기한이 지난 계약 ${replacedCount}건을 모두 새로운 발주 계약으로 갱신했습니다!`, 'success')
+    } else {
+      showToast('현재 기한이 지난 계약이 없습니다.', 'info')
+    }
+    return replacedCount
+  }, [player.season, player.day, showToast])
 
   // --- 늘봄 식당 & 요리 시스템 ---
   const buyRestaurant = useCallback((): boolean => {
@@ -1712,6 +1787,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearShelf,
       checkoutCustomer,
       fulfillContract,
+      renewContract,
+      refreshExpiredContracts,
       buyRestaurant,
       buyUtensil,
       cookDish,
@@ -1766,6 +1843,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearShelf,
       checkoutCustomer,
       fulfillContract,
+      renewContract,
+      refreshExpiredContracts,
       buyRestaurant,
       buyUtensil,
       cookDish,
