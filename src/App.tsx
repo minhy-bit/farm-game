@@ -6,6 +6,7 @@ import { WholesaleHub } from './components/WholesaleHub'
 import { ProcessingStorage } from './components/ProcessingStorage'
 import { ShopUpgrades } from './components/ShopUpgrades'
 import { RestaurantView } from './components/RestaurantView'
+import { AuthModal } from './components/AuthModal'
 import { useGame } from './context/GameContext'
 import { registerAgentController } from './agent/agentController'
 
@@ -159,6 +160,9 @@ export const App: React.FC = () => {
       <footer className="border-t-4 border-[#3c261a] bg-farm-surface/95 py-4 text-center text-xs text-amber-100/70 shadow-[0_-3px_0_rgba(200,149,82,.8)]">
         <p>늘봄마을 농장 일지 · 오늘도 천천히, 한 칸씩</p>
       </footer>
+
+      {/* 계정 로그인/저장 모달 */}
+      <AuthModal />
     </div>
   )
 }

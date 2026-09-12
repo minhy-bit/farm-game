@@ -27,6 +27,17 @@ import { CUSTOMER_PRESETS, CUSTOMER_BUBBLES } from '../data/customers'
 import { UTENSILS_MAP } from '../data/cookingUtensils'
 import { RECIPES_MAP } from '../data/recipes'
 import { SoundSystem } from '../utils/audio'
+import { UserProfile, SaveGamePayload } from '../types/auth'
+import {
+  getStoredUsers,
+  saveStoredUsers,
+  getStoredSave,
+  writeStoredSave,
+  removeStoredSave,
+  getLastActiveUser,
+  setLastActiveUser,
+  hashPassword
+} from '../utils/storage'
 
 interface NotificationToast {
   id: string
@@ -99,6 +110,17 @@ interface GameContextType {
   forceDecayTile: (tileIndex?: number) => boolean
   forceRotCrop: (tileIndex?: number) => boolean
   showToast: (message: string, type?: 'info' | 'success' | 'warning') => void
+
+  // Auth & Save System
+  currentUser: string | null
+  isAuthModalOpen: boolean
+  setIsAuthModalOpen: (open: boolean) => void
+  loginUser: (username: string, password?: string) => { success: boolean; message: string }
+  registerUser: (username: string, password?: string) => { success: boolean; message: string }
+  logoutUser: () => void
+  saveCurrentGame: (quiet?: boolean) => boolean
+  deleteUser: (username: string) => void
+  getUserProfiles: () => UserProfile[]
 }
 
 const GameContext = createContext<GameContextType | null>(null)
@@ -230,6 +252,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     cookedInventory: []
   })
 
+  // 10. 계정 및 저장 상태
+  const [currentUser, setCurrentUser] = useState<string | null>(null)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false)
+
   // 알림 토스트 출력 (최대 4개 유지)
   const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' = 'info') => {
     const id = `toast_${Date.now()}_${Math.random()}`
@@ -244,6 +270,227 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const u = upgrades.find(item => item.id === id)
     return u ? u.level > 0 : false
   }, [upgrades])
+
+  // --- 계정 및 저장 시스템 ---
+  const getUserProfiles = useCallback((): UserProfile[] => {
+    return getStoredUsers()
+  }, [])
+
+  const saveCurrentGame = useCallback(
+    (quiet = false): boolean => {
+      if (!currentUser) {
+        if (!quiet) showToast('로그인된 계정이 없습니다. 계정을 등록하여 저장하세요!', 'warning')
+        return false
+      }
+
+      const payload: SaveGamePayload = {
+        version: 1,
+        savedAt: Date.now(),
+        username: currentUser,
+        player,
+        tiles,
+        inventory,
+        shelves,
+        contracts,
+        upgrades,
+        restaurant,
+        gridSize
+      }
+
+      const ok = writeStoredSave(payload)
+      if (ok) {
+        if (!quiet) {
+          SoundSystem.playRegister()
+          showToast(`💾 [${currentUser}] 농부님의 진행 상황이 안전하게 저장되었습니다!`, 'success')
+        }
+      } else {
+        if (!quiet) showToast('저장에 실패했습니다. 로컬 저장 공간을 확인해주세요.', 'warning')
+      }
+      return ok
+    },
+    [currentUser, player, tiles, inventory, shelves, contracts, upgrades, restaurant, gridSize, showToast]
+  )
+
+  const registerUser = useCallback(
+    (username: string, password = ''): { success: boolean; message: string } => {
+      const trimmed = username.trim()
+      const users = getStoredUsers()
+      if (users.some(u => u.username === trimmed)) {
+        return { success: false, message: '이미 등록된 농부 닉네임입니다!' }
+      }
+
+      const newUser: UserProfile = {
+        username: trimmed,
+        passwordHash: hashPassword(password),
+        createdAt: Date.now(),
+        lastSavedAt: Date.now(),
+        farmSummary: {
+          gold: 15000,
+          day: 1,
+          year: 1,
+          season: 'spring',
+          reputation: 0
+        }
+      }
+
+      saveStoredUsers([...users, newUser])
+      setCurrentUser(trimmed)
+      setLastActiveUser(trimmed)
+
+      // 초기 상태 리셋
+      const initTiles = createInitialTiles(3)
+      const initPlayer: PlayerStats = {
+        name: trimmed,
+        gold: 15000,
+        totalEarned: 15000,
+        stamina: 100,
+        maxStamina: 100,
+        day: 1,
+        hour: 6,
+        season: 'spring',
+        weather: 'sunny',
+        reputation: 0,
+        martCustomersServed: 0,
+        contractsFulfilled: 0
+      }
+      const initInventory: InventoryItem[] = [
+        { id: 'inv_seed_potato', type: 'seed', targetId: 'crop_potato', name: '포슬알감자 씨앗', count: 10, unitPrice: 400 },
+        { id: 'inv_seed_strawberry', type: 'seed', targetId: 'crop_strawberry', name: '설향딸기 씨앗', count: 6, unitPrice: 800 }
+      ]
+      const initShelves: MartShelf[] = [
+        { id: 'shelf_1', name: '1호 신선 채소 매대', shelfType: 'produce', cropId: null, quality: 'normal', stock: 0, maxStock: 20, price: 0, basePrice: 0, freshness: 100 },
+        { id: 'shelf_2', name: '2호 제철 과일 매대', shelfType: 'fruit', cropId: null, quality: 'normal', stock: 0, maxStock: 20, price: 0, basePrice: 0, freshness: 100 },
+        { id: 'shelf_3', name: '3호 프리미엄 로컬 매대', shelfType: 'special', cropId: null, quality: 'normal', stock: 0, maxStock: 20, price: 0, basePrice: 0, freshness: 100 }
+      ]
+      const initContracts = INITIAL_CONTRACTS
+      const initUpgrades = UPGRADES
+      const initRestaurant: RestaurantState = {
+        isOwned: false,
+        totalDishesServed: 0,
+        unlockedUtensils: ['pot'],
+        cookedInventory: []
+      }
+
+      setPlayer(initPlayer)
+      setTiles(initTiles)
+      setInventory(initInventory)
+      setShelves(initShelves)
+      setContracts(initContracts)
+      setUpgrades(initUpgrades)
+      setRestaurant(initRestaurant)
+      setGridSize(3)
+
+      writeStoredSave({
+        version: 1,
+        savedAt: Date.now(),
+        username: trimmed,
+        player: initPlayer,
+        tiles: initTiles,
+        inventory: initInventory,
+        shelves: initShelves,
+        contracts: initContracts,
+        upgrades: initUpgrades,
+        restaurant: initRestaurant,
+        gridSize: 3
+      })
+
+      SoundSystem.playFanfare()
+      showToast(`🌾 환영합니다, [${trimmed}] 농부님! 늘봄마을에서 성공적인 귀농을 응원합니다!`, 'success')
+      return { success: true, message: '등록 성공' }
+    },
+    [showToast]
+  )
+
+  const loginUser = useCallback(
+    (username: string, password = ''): { success: boolean; message: string } => {
+      const trimmed = username.trim()
+      const users = getStoredUsers()
+      const user = users.find(u => u.username === trimmed)
+      if (!user) {
+        return { success: false, message: '등록되지 않은 농부 닉네임입니다!' }
+      }
+
+      if (user.passwordHash && user.passwordHash !== hashPassword(password)) {
+        return { success: false, message: '비밀번호가 일치하지 않습니다!' }
+      }
+
+      const save = getStoredSave(trimmed)
+      if (!save) {
+        return { success: false, message: '저장된 농장 데이터를 찾을 수 없습니다.' }
+      }
+
+      setCurrentUser(trimmed)
+      setLastActiveUser(trimmed)
+
+      if (save.player) setPlayer(save.player)
+      if (save.tiles) setTiles(save.tiles)
+      if (save.inventory) setInventory(save.inventory)
+      if (save.shelves) setShelves(save.shelves)
+      if (save.contracts) setContracts(save.contracts)
+      if (save.upgrades) setUpgrades(save.upgrades)
+      if (save.restaurant) setRestaurant(save.restaurant)
+      if (save.gridSize) setGridSize(save.gridSize)
+
+      SoundSystem.playFanfare()
+      showToast(`🌾 [${trimmed}] 농부님, 어서오세요! 저장된 농장으로 복귀했습니다.`, 'success')
+      return { success: true, message: '로그인 성공' }
+    },
+    [showToast]
+  )
+
+  const logoutUser = useCallback(() => {
+    if (currentUser) {
+      saveCurrentGame(true)
+    }
+    setCurrentUser(null)
+    setLastActiveUser(null)
+    setIsAuthModalOpen(true)
+    showToast('로그아웃되었습니다. 다른 농부로 접속하거나 새로 시작할 수 있습니다.', 'info')
+  }, [currentUser, saveCurrentGame, showToast])
+
+  const deleteUser = useCallback((targetUser: string) => {
+    removeStoredSave(targetUser)
+    if (currentUser === targetUser) {
+      setCurrentUser(null)
+      setIsAuthModalOpen(true)
+    }
+    showToast(`[${targetUser}] 농부의 저장 데이터가 삭제되었습니다.`, 'info')
+  }, [currentUser, showToast])
+
+  // 초기 실행 시 마지막 로그인 유저 자동 복원
+  useEffect(() => {
+    const lastUser = getLastActiveUser()
+    const users = getStoredUsers()
+    if (lastUser && users.some(u => u.username === lastUser)) {
+      const save = getStoredSave(lastUser)
+      if (save) {
+        setCurrentUser(lastUser)
+        if (save.player) setPlayer(save.player)
+        if (save.tiles) setTiles(save.tiles)
+        if (save.inventory) setInventory(save.inventory)
+        if (save.shelves) setShelves(save.shelves)
+        if (save.contracts) setContracts(save.contracts)
+        if (save.upgrades) setUpgrades(save.upgrades)
+        if (save.restaurant) setRestaurant(save.restaurant)
+        if (save.gridSize) setGridSize(save.gridSize)
+        showToast(`🌾 [${lastUser}] 농부님의 저장된 농장을 자동으로 불러왔습니다!`, 'success')
+        return
+      }
+    }
+
+    if (users.length === 0) {
+      setIsAuthModalOpen(true)
+    }
+  }, [showToast])
+
+  // 정기 자동 저장 (60초마다)
+  useEffect(() => {
+    if (!currentUser) return
+    const timer = setInterval(() => {
+      saveCurrentGame(true)
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [currentUser, saveCurrentGame])
 
   // --- 농장 타일 조작 ---
   const tillTile = useCallback((tileId: string): boolean => {
@@ -710,7 +957,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'success'
       )
     }
-  }, [player.day, player.season, hasUpgrade, showToast])
+
+    // 취침 시 하루 자동 저장
+    saveCurrentGame(true)
+  }, [player.day, player.season, hasUpgrade, showToast, saveCurrentGame])
 
   const fastForwardHour = useCallback(() => {
     setPlayer(prev => {
@@ -1476,7 +1726,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       giveCrops,
       forceDecayTile,
       forceRotCrop,
-      showToast
+      showToast,
+      currentUser,
+      isAuthModalOpen,
+      setIsAuthModalOpen,
+      loginUser,
+      registerUser,
+      logoutUser,
+      saveCurrentGame,
+      deleteUser,
+      getUserProfiles
     }),
     [
       player,
@@ -1521,7 +1780,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       giveCrops,
       forceDecayTile,
       forceRotCrop,
-      showToast
+      showToast,
+      currentUser,
+      isAuthModalOpen,
+      loginUser,
+      registerUser,
+      logoutUser,
+      saveCurrentGame,
+      deleteUser,
+      getUserProfiles
     ]
   )
 

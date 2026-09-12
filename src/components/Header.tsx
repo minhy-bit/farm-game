@@ -18,11 +18,28 @@ import {
   Truck,
   Layers,
   ShoppingBag,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Save,
+  LogIn,
+  LogOut,
+  User
 } from 'lucide-react'
 
 export const Header: React.FC = () => {
-  const { player, activeTab, setActiveTab, sleepNextDay, customers, toasts, currentYear, currentSeasonDay } = useGame()
+  const {
+    player,
+    activeTab,
+    setActiveTab,
+    sleepNextDay,
+    customers,
+    toasts,
+    currentYear,
+    currentSeasonDay,
+    currentUser,
+    setIsAuthModalOpen,
+    saveCurrentGame,
+    logoutUser
+  } = useGame()
   const [muted, setMuted] = useState(SoundSystem.isMuted())
 
   const handleSoundToggle = () => {
@@ -132,6 +149,43 @@ export const Header: React.FC = () => {
             <Moon className="w-3.5 h-3.5" />
             <span>취침 (내일로)</span>
           </button>
+
+          {/* 계정 & 저장 시스템 */}
+          {currentUser ? (
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => saveCurrentGame(false)}
+                className="pixel-button flex items-center space-x-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-2.5 py-1.5 transition-all"
+                title="현재 진행 상태를 즉시 저장합니다"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>저장</span>
+              </button>
+              <div 
+                className="flex items-center space-x-1 px-2 py-1 bg-[#2e2019] border border-[#8d6238] rounded text-xs text-amber-200"
+                title={`로그인된 농부: ${currentUser}`}
+              >
+                <User className="w-3 h-3 text-amber-400" />
+                <span className="font-bold max-w-[80px] truncate">{currentUser}</span>
+              </div>
+              <button
+                onClick={logoutUser}
+                className="pixel-button p-1.5 bg-[#3d2417] hover:bg-red-800 text-amber-200 hover:text-white transition-colors"
+                title="로그아웃"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="pixel-button flex items-center space-x-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-1.5 transition-all animate-pulse"
+              title="계정을 만들어 진행상황을 영구 저장하세요"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>로그인/저장</span>
+            </button>
+          )}
 
           {/* 사운드 온오프 */}
           <button
