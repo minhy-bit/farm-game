@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-farm-bg text-slate-100 font-sans antialiased;
+    background-color: #91cbe2;
+    background-image:
+      linear-gradient(rgba(255,255,255,.18) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(255,255,255,.13) 2px, transparent 2px),
+      linear-gradient(180deg, #a8dcf0 0%, #91cbe2 43%, #7cb55e 43%, #659b4b 100%);
+    background-size: 36px 36px, 36px 36px, 100% 100%;
+    background-attachment: fixed;
+  }
+
+  button:focus-visible {
+    outline: 3px solid #ffe283;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .pixel-frame {
+    border: 4px solid #3c261a;
+    border-radius: 8px;
+    box-shadow: 0 0 0 3px #c89552, 0 0 0 6px #5a3923, 7px 7px 0 rgba(48, 28, 16, .42);
+  }
+
+  .pixel-wood {
+    background-color: #513827;
+    background-image: repeating-linear-gradient(0deg, rgba(255, 216, 151, .05) 0 2px, transparent 2px 7px);
+  }
+
+  .pixel-button {
+    border: 2px solid #3c261a;
+    border-radius: 5px;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.18), 2px 2px 0 rgba(35, 19, 11, .8);
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #3f2d24;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c89552;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e5b94d;
+}
+
+/* Floating Animations */
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -24px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -48px) scale(1);
+  }
+}
+
+.animate-float-up {
+  animation: floatUp 1s ease-out forwards;
+}
+
+@keyframes harvestSparkle {
+  0% { transform: scale(0.8) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+  100% { transform: scale(1) rotate(360deg); opacity: 0; }
+}
+
+.animate-sparkle {
+  animation: harvestSparkle 0.8s ease-out forwards;
+}
