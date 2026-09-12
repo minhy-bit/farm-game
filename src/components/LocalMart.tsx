@@ -370,7 +370,9 @@ export const LocalMart: React.FC = () => {
                     min="1"
                     max={Math.min(
                       20,
-                      inventory.find(i => i.targetId === selectedItemTargetId)?.count || 1
+                      inventory
+                        .filter(i => i.targetId === selectedItemTargetId)
+                        .reduce((sum, i) => sum + i.count, 0) || 1
                     )}
                     value={stockCount}
                     onChange={e => setStockCount(parseInt(e.target.value))}

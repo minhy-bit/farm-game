@@ -386,7 +386,9 @@ export const RestaurantView: React.FC = () => {
             let hasAllIngredients = true
             const ingredientStatuses = recipe.ingredients.map(ing => {
               const crop = CROPS_MAP.get(ing.cropId)
-              const owned = inventory.find(i => i.type === 'crop' && i.targetId === ing.cropId)?.count || 0
+              const owned = inventory
+                .filter(i => i.type === 'crop' && i.targetId === ing.cropId)
+                .reduce((sum, i) => sum + i.count, 0)
               const enough = owned >= ing.count
               if (!enough) hasAllIngredients = false
               return {

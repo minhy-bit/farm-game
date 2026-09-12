@@ -130,8 +130,9 @@ export const WholesaleHub: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {contracts.map(contract => {
                 const crop = CROPS_MAP.get(contract.cropId)
-                const currentOwned =
-                  inventory.find(i => i.type === 'crop' && i.targetId === contract.cropId)?.count || 0
+                const currentOwned = inventory
+                  .filter(i => i.type === 'crop' && i.targetId === contract.cropId)
+                  .reduce((sum, i) => sum + i.count, 0)
                 const daysLeft = contract.deadlineDay - player.day
                 const isExpired = !contract.isCompleted && daysLeft < 0
                 const canFulfill = currentOwned >= contract.requiredCount && !contract.isCompleted && !isExpired

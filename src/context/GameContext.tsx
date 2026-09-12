@@ -1010,15 +1010,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- 로컬푸드 마트 운영 ---
   const stockShelf = useCallback((shelfId: string, targetId: string, count: number, price: number): boolean => {
-    // 인벤토리에서 물품 찾기
-    const invItem = inventory.find(i => (i.type === 'crop' || i.type === 'processed') && i.targetId === targetId && i.count >= count)
-    if (!invItem) {
-      showToast('인벤토리에 수량이 부족합니다.', 'warning')
+    // 인벤토리에서 총 보유 수량 계산 (모든 품질 합산)
+    const matchingItems = inventory.filter(i => (i.type === 'crop' || i.type === 'processed') && i.targetId === targetId)
+    const totalCount = matchingItems.reduce((sum, i) => sum + i.count, 0)
+    if (totalCount < count) {
+      showToast(`인벤토리에 수량이 부족합니다. (보유: ${totalCount}개, 요청: ${count}개)`, 'warning')
       return false
     }
 
     const cropDef = CROPS_MAP.get(targetId)
     const basePrice = cropDef ? cropDef.basePrice : 2000
+    const primaryQuality = matchingItems[0]?.quality || 'normal'
+    const displayName = matchingItems[0]?.name || cropDef?.nameKr || '농산물'
 
     setShelves(prev =>
       prev.map(shelf => {
@@ -1026,7 +1029,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return {
             ...shelf,
             cropId: targetId,
-            quality: invItem.quality || 'normal',
+            quality: primaryQuality,
             stock: shelf.cropId === targetId ? shelf.stock + count : count,
             price: price,
             basePrice: basePrice,
@@ -1037,15 +1040,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
     )
 
-    // 인벤토리 차감
-    setInventory(prev =>
-      prev
-        .map(i => (i.id === invItem.id ? { ...i, count: i.count - count } : i))
+    // 인벤토리 차감 (순차적 차감)
+    setInventory(prev => {
+      let toDeduct = count
+      return prev
+        .map(i => {
+          if (toDeduct > 0 && (i.type === 'crop' || i.type === 'processed') && i.targetId === targetId) {
+            const deduct = Math.min(i.count, toDeduct)
+            toDeduct -= deduct
+            return { ...i, count: i.count - deduct }
+          }
+          return i
+        })
         .filter(i => i.count > 0)
-    )
+    })
 
     SoundSystem.playClick()
-    showToast(`매대에 [${invItem.name}] ${count}개를 진열했습니다.`, 'info')
+    showToast(`매대에 [${displayName}] ${count}개를 진열했습니다.`, 'info')
     return true
   }, [inventory, showToast])
 
@@ -1180,19 +1191,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const ct = contracts.find(c => c.id === contractId)
     if (!ct || ct.isCompleted) return false
 
-    // 인벤토리에서 요구 수량 체크
-    const cropInv = inventory.find(i => i.type === 'crop' && i.targetId === ct.cropId && i.count >= ct.requiredCount)
-    if (!cropInv) {
-      showToast(`납품 수량이 부족합니다! (${ct.cropName} ${ct.requiredCount}개 필요)`, 'warning')
+    // 인벤토리에서 요구 수량 체크 (모든 품질 합산)
+    const totalOwned = inventory
+      .filter(i => i.type === 'crop' && i.targetId === ct.cropId)
+      .reduce((sum, i) => sum + i.count, 0)
+
+    if (totalOwned < ct.requiredCount) {
+      showToast(`납품 수량이 부족합니다! (${ct.cropName} ${ct.requiredCount}개 필요, 현재 보유: ${totalOwned}개)`, 'warning')
       return false
     }
 
-    // 인벤토리 차감
-    setInventory(prev =>
-      prev
-        .map(i => (i.id === cropInv.id ? { ...i, count: i.count - ct.requiredCount } : i))
+    // 인벤토리 차감 (일반 -> 고급 -> 특등 순차 차감)
+    setInventory(prev => {
+      let toDeduct = ct.requiredCount
+      return prev
+        .map(i => {
+          if (toDeduct > 0 && i.type === 'crop' && i.targetId === ct.cropId) {
+            const deduct = Math.min(i.count, toDeduct)
+            toDeduct -= deduct
+            return { ...i, count: i.count - deduct }
+          }
+          return i
+        })
         .filter(i => i.count > 0)
-    )
+    })
 
     // 보상 지급 및 납품 횟수 증가
     const nextFulfilled = player.contractsFulfilled + 1
@@ -1335,31 +1357,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false
     }
 
-    // 재료 확인
+    // 재료 확인 (모든 품질 합산)
     for (const ing of recipe.ingredients) {
-      const cropInv = inventory.find(i => i.type === 'crop' && i.targetId === ing.cropId)
+      const totalOwned = inventory
+        .filter(i => i.type === 'crop' && i.targetId === ing.cropId)
+        .reduce((sum, i) => sum + i.count, 0)
       const cropDef = CROPS_MAP.get(ing.cropId)
-      const currentCount = cropInv ? cropInv.count : 0
-      if (currentCount < ing.count) {
-        showToast(`재료가 부족합니다! (${cropDef?.nameKr || '작물'} ${ing.count}개 필요, 보유: ${currentCount}개)`, 'warning')
+      if (totalOwned < ing.count) {
+        showToast(`재료가 부족합니다! (${cropDef?.nameKr || '작물'} ${ing.count}개 필요, 보유: ${totalOwned}개)`, 'warning')
         return false
       }
     }
 
-    // 재료 차감
+    // 재료 차감 (순차적 차감)
     setInventory(prev => {
       let nextInv = [...prev]
       for (const ing of recipe.ingredients) {
-        nextInv = nextInv
-          .map(item => {
-            if (item.type === 'crop' && item.targetId === ing.cropId) {
-              return { ...item, count: item.count - ing.count }
-            }
-            return item
-          })
-          .filter(item => item.count > 0)
+        let toDeduct = ing.count
+        nextInv = nextInv.map(item => {
+          if (toDeduct > 0 && item.type === 'crop' && item.targetId === ing.cropId) {
+            const deduct = Math.min(item.count, toDeduct)
+            toDeduct -= deduct
+            return { ...item, count: item.count - deduct }
+          }
+          return item
+        })
       }
-      return nextInv
+      return nextInv.filter(item => item.count > 0)
     })
 
     // 기력 5 소모
@@ -1586,18 +1610,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false
     }
 
-    const cropInv = inventory.find(i => i.type === 'crop' && i.targetId === cropId && i.count >= count)
-    if (!cropInv) {
-      showToast(`가공할 원물 수량이 부족합니다. (${cropDef.nameKr} ${count}개 필요)`, 'warning')
+    const totalOwned = inventory
+      .filter(i => i.type === 'crop' && i.targetId === cropId)
+      .reduce((sum, i) => sum + i.count, 0)
+
+    if (totalOwned < count) {
+      showToast(`가공할 원물 수량이 부족합니다. (${cropDef.nameKr} ${count}개 필요, 현재 보유: ${totalOwned}개)`, 'warning')
       return false
     }
 
-    // 인벤토리 차감
-    setInventory(prev =>
-      prev
-        .map(i => (i.id === cropInv.id ? { ...i, count: i.count - count } : i))
+    // 인벤토리 차감 (순차적 차감)
+    setInventory(prev => {
+      let toDeduct = count
+      return prev
+        .map(i => {
+          if (toDeduct > 0 && i.type === 'crop' && i.targetId === cropId) {
+            const deduct = Math.min(i.count, toDeduct)
+            toDeduct -= deduct
+            return { ...i, count: i.count - deduct }
+          }
+          return i
+        })
         .filter(i => i.count > 0)
-    )
+    })
 
     // 가공품 생성
     setInventory(prev => {

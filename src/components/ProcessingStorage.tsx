@@ -74,7 +74,12 @@ export const ProcessingStorage: React.FC = () => {
 
           {/* 원물 목록 */}
           <div>
-            <div className="text-xs font-bold text-slate-400 mb-2">신선 원물 ({rawCrops.length}종)</div>
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-2">
+              <span>신선 원물 ({rawCrops.length}개 슬롯)</span>
+              <span className="text-emerald-400 font-mono">
+                총 {rawCrops.reduce((acc, i) => acc + i.count, 0)}개 보관 중
+              </span>
+            </div>
             {rawCrops.length === 0 ? (
               <div className="py-8 text-center text-slate-400 text-xs bg-farm-surface/40 rounded-xl border border-dashed border-farm-border">
                 보관 중인 신선 농작물이 없습니다. 텃밭에서 작물을 수확하세요!
@@ -86,12 +91,20 @@ export const ProcessingStorage: React.FC = () => {
                   return (
                     <div
                       key={item.id}
-                      className="bg-farm-surface border border-farm-border p-3 rounded-xl flex items-center space-x-3 shadow-sm"
+                      className={`bg-farm-surface border p-3 rounded-xl flex items-center space-x-3 shadow-sm ${
+                        item.quality === 'supreme'
+                          ? 'border-amber-500/60 bg-amber-950/20'
+                          : item.quality === 'high'
+                          ? 'border-purple-500/50 bg-purple-950/15'
+                          : 'border-farm-border'
+                      }`}
                     >
                       <span className="text-2xl">{crop?.icon || '📦'}</span>
                       <div className="overflow-hidden">
-                        <div className="text-xs font-bold text-slate-200 truncate">{item.name}</div>
-                        <div className="text-[10px] text-emerald-400 font-mono">수량: {item.count}개</div>
+                        <div className="text-xs font-bold text-slate-200 truncate flex items-center space-x-1">
+                          <span>{item.name}</span>
+                        </div>
+                        <div className="text-[10px] text-emerald-400 font-mono font-bold">수량: {item.count}개</div>
                         <div className="text-[10px] text-amber-300/80 font-mono">개당 ₩{item.unitPrice.toLocaleString()}</div>
                       </div>
                     </div>
@@ -142,8 +155,9 @@ export const ProcessingStorage: React.FC = () => {
 
           <div className="space-y-3">
             {processableCrops.map(crop => {
-              const ownedCount =
-                inventory.find(i => i.type === 'crop' && i.targetId === crop.id)?.count || 0
+              const ownedCount = inventory
+                .filter(i => i.type === 'crop' && i.targetId === crop.id)
+                .reduce((sum, i) => sum + i.count, 0)
               const canMake = ownedCount >= 2 // 2개 소모하여 1개 가공품 제작
 
               return (
