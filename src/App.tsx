@@ -8,6 +8,7 @@ import { ShopUpgrades } from './components/ShopUpgrades'
 import { RestaurantView } from './components/RestaurantView'
 import { FishingView } from './components/FishingView'
 import { AuthModal } from './components/AuthModal'
+import { FloatingHoeCursor } from './components/FloatingHoeCursor'
 import { useGame } from './context/GameContext'
 import { registerAgentController } from './agent/agentController'
 import { BgmSystem } from './utils/bgm'
@@ -23,6 +24,7 @@ export const App: React.FC = () => {
     upgrades,
     restaurant,
     fishing,
+    hoeGacha,
     activeTab,
     setActiveTab,
     tillTile,
@@ -48,6 +50,9 @@ export const App: React.FC = () => {
     buyBait,
     fish,
     processCrop,
+    drawHoeGacha,
+    equipHoeSkin,
+    toggleFloatingCursor,
     addFunds,
     giveSeeds,
     giveCrops,
@@ -73,6 +78,7 @@ export const App: React.FC = () => {
         upgrades,
         restaurant,
         fishing,
+        hoeGacha,
         activeTab,
         bgm: BgmSystem.getState()
       }),
@@ -115,6 +121,9 @@ export const App: React.FC = () => {
       buyBait,
       fish,
       processCrop,
+      drawHoeGacha,
+      equipHoeSkin,
+      toggleFloatingCursor,
       switchTab: (tab) => setActiveTab(tab),
       addFunds,
       giveSeeds,
@@ -138,6 +147,7 @@ export const App: React.FC = () => {
     upgrades,
     restaurant,
     fishing,
+    hoeGacha,
     activeTab,
     tillTile,
     waterTile,
@@ -162,6 +172,9 @@ export const App: React.FC = () => {
     buyBait,
     fish,
     processCrop,
+    drawHoeGacha,
+    equipHoeSkin,
+    toggleFloatingCursor,
     setActiveTab,
     addFunds,
     giveSeeds,
@@ -172,6 +185,9 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-farm-bg text-slate-100 flex flex-col selection:bg-amber-300 selection:text-stone-900">
+      {/* 마우스 커서를 따라다니는 호미 스킨 효과 */}
+      <FloatingHoeCursor />
+
       {/* 글로벌 상단 헤더 & 탭 바 */}
       <Header />
 

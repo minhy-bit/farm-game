@@ -15,6 +15,8 @@ import {
   CookingUtensilType,
   RestaurantState,
   FishingState,
+  HoeSkin,
+  HoeGachaState,
   DAYS_PER_SEASON,
   DAYS_PER_CYCLE,
   SOIL_DECAY_RATE,
@@ -29,6 +31,14 @@ import { CUSTOMER_PRESETS, CUSTOMER_BUBBLES } from '../data/customers'
 import { UTENSILS_MAP } from '../data/cookingUtensils'
 import { RECIPES_MAP } from '../data/recipes'
 import { BAIT_PRICE, FISHING_CATCHES, FISHING_CATCHES_MAP, FISHING_ROD_PRICE, FISHING_STAMINA_COST } from '../data/fishing'
+import {
+  HOE_SKINS,
+  HOE_SKINS_MAP,
+  DEFAULT_HOE_SKIN_ID,
+  HOE_GACHA_SINGLE_COST,
+  HOE_GACHA_MULTI_COST,
+  HOE_DUPLICATE_GOLD_REFUND
+} from '../data/hoeSkins'
 import { SoundSystem } from '../utils/audio'
 import { UserProfile, SaveGamePayload } from '../types/auth'
 import {
@@ -112,6 +122,12 @@ interface GameContextType {
   
   // Processing
   processCrop: (cropId: string, count: number) => boolean
+
+  // Hoe Skin & Reputation Gacha System
+  hoeGacha: HoeGachaState
+  drawHoeGacha: (count: number) => HoeSkin[] | null
+  equipHoeSkin: (skinId: string) => boolean
+  toggleFloatingCursor: () => void
 
   // Debug/Cheat for agent verification
   addFunds: (amount: number) => void
@@ -287,7 +303,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastCatchId: null
   })
 
-  // 10. 계정 및 저장 상태
+  // 10. 호미 스킨 & 가챠 상태
+  const [hoeGacha, setHoeGacha] = useState<HoeGachaState>({
+    unlockedSkinIds: [DEFAULT_HOE_SKIN_ID],
+    equippedSkinId: DEFAULT_HOE_SKIN_ID,
+    isFloatingCursorEnabled: true
+  })
+
+  // 11. 계정 및 저장 상태
   const [currentUser, setCurrentUser] = useState<string | null>(null)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false)
 
@@ -330,6 +353,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         upgrades,
         restaurant,
         fishing,
+        hoeGacha,
         gridSize
       }
 
@@ -344,7 +368,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return ok
     },
-    [currentUser, player, tiles, inventory, shelves, contracts, upgrades, restaurant, fishing, gridSize, showToast]
+    [currentUser, player, tiles, inventory, shelves, contracts, upgrades, restaurant, fishing, hoeGacha, gridSize, showToast]
   )
 
   const registerUser = useCallback(
@@ -407,6 +431,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cookedInventory: []
       }
       const initFishing: FishingState = { hasRod: false, baitCount: 0, totalCatches: 0, lastCatchId: null }
+      const initHoeGacha: HoeGachaState = {
+        unlockedSkinIds: [DEFAULT_HOE_SKIN_ID],
+        equippedSkinId: DEFAULT_HOE_SKIN_ID,
+        isFloatingCursorEnabled: true
+      }
 
       setPlayer(initPlayer)
       setTiles(initTiles)
@@ -416,6 +445,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUpgrades(initUpgrades)
       setRestaurant(initRestaurant)
       setFishing(initFishing)
+      setHoeGacha(initHoeGacha)
       setGridSize(3)
 
       writeStoredSave({
@@ -430,6 +460,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         upgrades: initUpgrades,
         restaurant: initRestaurant,
         fishing: initFishing,
+        hoeGacha: initHoeGacha,
         gridSize: 3
       })
 
@@ -469,6 +500,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (save.upgrades) setUpgrades(mergeSavedUpgrades(save.upgrades))
       if (save.restaurant) setRestaurant(save.restaurant)
       if (save.fishing) setFishing(save.fishing)
+      if (save.hoeGacha) setHoeGacha(save.hoeGacha)
       if (save.gridSize) setGridSize(save.gridSize)
 
       SoundSystem.playFanfare()
@@ -484,6 +516,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setCurrentUser(null)
     setLastActiveUser(null)
+    setHoeGacha({
+      unlockedSkinIds: [DEFAULT_HOE_SKIN_ID],
+      equippedSkinId: DEFAULT_HOE_SKIN_ID,
+      isFloatingCursorEnabled: true
+    })
     setIsAuthModalOpen(true)
     showToast('로그아웃되었습니다. 다른 농부로 접속하거나 새로 시작할 수 있습니다.', 'info')
   }, [currentUser, saveCurrentGame, showToast])
@@ -513,6 +550,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (save.upgrades) setUpgrades(mergeSavedUpgrades(save.upgrades))
         if (save.restaurant) setRestaurant(save.restaurant)
         if (save.fishing) setFishing(save.fishing)
+        if (save.hoeGacha) setHoeGacha(save.hoeGacha)
         if (save.gridSize) setGridSize(save.gridSize)
         showToast(`🌾 [${lastUser}] 농부님의 저장된 농장을 자동으로 불러왔습니다!`, 'success')
         return
@@ -757,20 +795,45 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const target = tiles.find(t => t.id === tileId)
     if (!target || !target.cropId || target.currentStage < 3) return false
 
-    const cropId = target.cropId
     const fertileSoilLevel = upgrades.find(u => u.id === 'up_fertile_soil')?.level || 0
+    const autoHarvesterLevel = upgrades.find(u => u.id === 'up_auto_harvester')?.level || 0
     const hasAutoTill = hasUpgrade('up_auto_till')
-    const rand = Math.random()
-    let quality: CropQuality = 'normal'
-    if (rand < 0.15 + fertileSoilLevel * 0.15) {
-      quality = 'supreme'
-    } else if (rand < 0.45 + fertileSoilLevel * 0.15) {
-      quality = 'high'
+
+    // 수확 대상 타일 목록 결정 (광역 수확기 보유 시 해당 범위 내 모든 완숙 작물 수확)
+    let tilesToHarvest: typeof tiles = []
+
+    if (autoHarvesterLevel > 0) {
+      const harvestSize = Math.min(autoHarvesterLevel + 1, gridSize)
+      let startX = target.x
+      let startY = target.y
+      if (startX + harvestSize > gridSize) {
+        startX = Math.max(0, gridSize - harvestSize)
+      }
+      if (startY + harvestSize > gridSize) {
+        startY = Math.max(0, gridSize - harvestSize)
+      }
+
+      tilesToHarvest = tiles.filter(
+        t =>
+          t.x >= startX &&
+          t.x < startX + harvestSize &&
+          t.y >= startY &&
+          t.y < startY + harvestSize &&
+          t.cropId &&
+          t.currentStage >= 3
+      )
     }
 
+    if (tilesToHarvest.length === 0) {
+      tilesToHarvest = [target]
+    }
+
+    const harvestTileIds = new Set(tilesToHarvest.map(t => t.id))
+
+    // 밭 타일 상태 갱신
     setTiles(prev =>
       prev.map(tile =>
-        tile.id === tileId
+        harvestTileIds.has(tile.id)
           ? {
               ...tile,
               cropId: null,
@@ -778,48 +841,97 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               daysGrown: 0,
               waterCount: 0,
               isWatered: false,
-              isTilled: hasAutoTill, // 직파기 보유 시에만 밭 보존, 미보유 시 다시 호미질 필요!
+              isTilled: hasAutoTill, // 직파기 보유 시에만 밭 보존, 미보유 시 다시 호미질 필요
               quality: 'normal'
             }
           : tile
       )
     )
 
-    const cropDef = CROPS_MAP.get(cropId)
-    if (cropDef) {
-      const count = cropDef.yieldCount || 2
-      setInventory(prev => {
-        const existing = prev.find(i => i.type === 'crop' && i.targetId === cropId && i.quality === quality)
-        if (existing) {
-          return prev.map(i => (i.id === existing.id ? { ...i, count: i.count + count } : i))
-        }
-        return [
-          ...prev,
-          {
-            id: `inv_crop_${cropId}_${quality}_${Date.now()}`,
-            type: 'crop',
-            targetId: cropId,
-            name: `${quality === 'supreme' ? '🌟특등 ' : quality === 'high' ? '✨고급 ' : ''}${cropDef.nameKr}`,
-            count,
-            quality,
-            unitPrice:
-              quality === 'supreme'
-                ? Math.round(cropDef.basePrice * 1.5)
-                : quality === 'high'
-                ? Math.round(cropDef.basePrice * 1.25)
-                : cropDef.basePrice
-          }
-        ]
-      })
+    // 인벤토리에 수확물 추가 및 통계 집계
+    let totalHarvestCount = 0
+    const newItemsMap = new Map<string, { cropId: string; quality: CropQuality; count: number; name: string; unitPrice: number }>()
 
-      SoundSystem.playHarvest()
+    tilesToHarvest.forEach(t => {
+      const cId = t.cropId!
+      const cropDef = CROPS_MAP.get(cId)
+      if (!cropDef) return
+
+      const count = cropDef.yieldCount || 2
+      totalHarvestCount += count
+
+      const rand = Math.random()
+      let quality: CropQuality = 'normal'
+      if (rand < 0.15 + fertileSoilLevel * 0.15) {
+        quality = 'supreme'
+      } else if (rand < 0.45 + fertileSoilLevel * 0.15) {
+        quality = 'high'
+      }
+
+      const key = `${cId}_${quality}`
+      const existing = newItemsMap.get(key)
+      if (existing) {
+        existing.count += count
+      } else {
+        newItemsMap.set(key, {
+          cropId: cId,
+          quality,
+          count,
+          name: `${quality === 'supreme' ? '🌟특등 ' : quality === 'high' ? '✨고급 ' : ''}${cropDef.nameKr}`,
+          unitPrice:
+            quality === 'supreme'
+              ? Math.round(cropDef.basePrice * 1.5)
+              : quality === 'high'
+              ? Math.round(cropDef.basePrice * 1.25)
+              : cropDef.basePrice
+        })
+      }
+    })
+
+    setInventory(prev => {
+      let updated = [...prev]
+      newItemsMap.forEach(itemInfo => {
+        const existingIdx = updated.findIndex(
+          i => i.type === 'crop' && i.targetId === itemInfo.cropId && i.quality === itemInfo.quality
+        )
+        if (existingIdx >= 0) {
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            count: updated[existingIdx].count + itemInfo.count
+          }
+        } else {
+          updated.push({
+            id: `inv_crop_${itemInfo.cropId}_${itemInfo.quality}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            type: 'crop',
+            targetId: itemInfo.cropId,
+            name: itemInfo.name,
+            count: itemInfo.count,
+            quality: itemInfo.quality,
+            unitPrice: itemInfo.unitPrice
+          })
+        }
+      })
+      return updated
+    })
+
+    SoundSystem.playHarvest()
+
+    if (tilesToHarvest.length > 1) {
+      const harvestSize = Math.min(autoHarvesterLevel + 1, gridSize)
       showToast(
-        `수확 성공! ${quality === 'supreme' ? '🌟[특등]' : quality === 'high' ? '✨[고급]' : ''} ${cropDef.nameKr} ${count}개를 풍성하게 수확했습니다!`,
+        `🌾 광역 콤바인 수확기(${harvestSize}×${harvestSize})로 작물 ${tilesToHarvest.length}곳에서 총 ${totalHarvestCount}개를 일괄 수확했습니다!`,
+        'success'
+      )
+    } else {
+      const singleCrop = CROPS_MAP.get(target.cropId!)
+      showToast(
+        `수확 성공! ${singleCrop?.nameKr || '작물'}을(를) 풍성하게 수확했습니다!`,
         'success'
       )
     }
+
     return true
-  }, [tiles, upgrades, hasUpgrade, showToast])
+  }, [tiles, upgrades, hasUpgrade, gridSize, showToast])
 
   const waterAllTiles = useCallback(() => {
     setTiles(prev =>
@@ -918,20 +1030,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     if (isSeasonChanged) {
-      setContracts(prev => refreshContractsForSeason(prev, nextSeason, nextDay))
+      setContracts(prev => {
+        const activeCropIds: string[] = []
+        const renewed = prev.map(c => {
+          if (c.isCompleted) {
+            const newCt = generateRandomContract(nextSeason, nextDay, activeCropIds)
+            activeCropIds.push(newCt.cropId)
+            return newCt
+          }
+          return c
+        })
+        return refreshContractsForSeason(renewed, nextSeason, nextDay)
+      })
     } else {
-      // 계절이 바뀌지 않았더라도, 마감 기한이 지난 미완료 계약(deadlineDay < nextDay)을 새 제철 계약으로 자동 갱신!
+      // 계절이 바뀌지 않았더라도: 어제 완료된 계약(c.isCompleted) 및 마감 기한 지난 계약을 새 제철 계약으로 자동 갱신!
       setContracts(prev => {
         let expiredCount = 0
+        let completedRenewedCount = 0
         const activeCropIds: string[] = []
         prev.forEach(c => {
-          if (c.isCompleted || c.deadlineDay >= nextDay) {
+          if (!c.isCompleted && c.deadlineDay >= nextDay) {
             activeCropIds.push(c.cropId)
           }
         })
 
         const updated = prev.map(c => {
-          if (!c.isCompleted && c.deadlineDay < nextDay) {
+          if (c.isCompleted) {
+            completedRenewedCount++
+            const newCt = generateRandomContract(nextSeason, nextDay, activeCropIds)
+            activeCropIds.push(newCt.cropId)
+            return newCt
+          }
+          if (c.deadlineDay < nextDay) {
             expiredCount++
             const newCt = generateRandomContract(nextSeason, nextDay, activeCropIds)
             activeCropIds.push(newCt.cropId)
@@ -940,9 +1070,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return c
         })
 
-        if (expiredCount > 0) {
+        if (completedRenewedCount > 0 || expiredCount > 0) {
           setTimeout(() => {
-            showToast(`📋 기한이 만료된 발주 계약 ${expiredCount}건이 새로운 품목 계약으로 자동 교체되었습니다.`, 'info')
+            const msgParts: string[] = []
+            if (completedRenewedCount > 0) msgParts.push(`출하 완료된 발주 ${completedRenewedCount}건 신규 등록`)
+            if (expiredCount > 0) msgParts.push(`기한 만료 ${expiredCount}건 교체`)
+            showToast(`📋 [B2B 물류센터] 새로운 날을 맞아 ${msgParts.join(', ')}되었습니다.`, 'info')
           }, 400)
         }
         return updated
@@ -1116,6 +1249,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- 로컬푸드 마트 운영 ---
   const stockShelf = useCallback((shelfId: string, targetId: string, count: number, price: number): boolean => {
+    // 1회 진열 수량 최대 5개 제한
+    if (count > 5) {
+      showToast('매대에는 한 번에 최대 5개까지만 진열할 수 있습니다.', 'warning')
+      return false
+    }
+    if (count <= 0) {
+      showToast('진열 수량은 1개 이상이어야 합니다.', 'warning')
+      return false
+    }
+
     // 인벤토리에서 총 보유 수량 계산 (모든 품질 합산)
     const matchingItems = inventory.filter(i => (i.type === 'crop' || i.type === 'processed') && i.targetId === targetId)
     const totalCount = matchingItems.reduce((sum, i) => sum + i.count, 0)
@@ -1195,19 +1338,44 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [shelves, showToast])
 
   // 손님 결제
+  // 손님 결제
   const checkoutCustomer = useCallback((customerId: string) => {
     const cust = customers.find(c => c.id === customerId)
     if (!cust || cust.cart.length === 0) return
 
     const totalBill = cust.cart.reduce((sum, item) => sum + item.unitPrice * item.count, 0)
 
-    setPlayer(prev => ({
-      ...prev,
-      gold: prev.gold + totalBill,
-      totalEarned: prev.totalEarned + totalBill,
-      reputation: prev.reputation + 2,
-      martCustomersServed: prev.martCustomersServed + 1
-    }))
+    // 판매 가격을 올려서 판 품목이 있는지 확인 (정가 초과)
+    const hasOverpricedItem = cust.cart.some(item => {
+      if (item.isOverpriced) return true
+      const crop = CROPS_MAP.get(item.cropId)
+      return crop ? item.unitPrice > crop.basePrice : false
+    })
+
+    let earnedReputation = 2
+    let halvedExistingReputation = false
+
+    if (hasOverpricedItem) {
+      // 0.2% 확률로 현재 가지고 있는 명성이 절반으로 급락
+      if (Math.random() < 0.002) {
+        halvedExistingReputation = true
+      }
+      // 50% 확률로 이번 결제에서 얻는 명성을 절반으로 낮춤
+      if (Math.random() < 0.5) {
+        earnedReputation = Math.floor(earnedReputation / 2)
+      }
+    }
+
+    setPlayer(prev => {
+      const baseRep = halvedExistingReputation ? Math.floor(prev.reputation / 2) : prev.reputation
+      return {
+        ...prev,
+        gold: prev.gold + totalBill,
+        totalEarned: prev.totalEarned + totalBill,
+        reputation: Math.max(0, baseRep + earnedReputation),
+        martCustomersServed: prev.martCustomersServed + 1
+      }
+    })
 
     // 손님 퇴장 상태로 전환 후 제거
     setCustomers(prev =>
@@ -1215,7 +1383,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     )
 
     SoundSystem.playRegister()
-    showToast(`[${cust.name}] 손님 결제 완료! +₩${totalBill.toLocaleString()} 매출 달성!`, 'success')
+
+    if (halvedExistingReputation) {
+      SoundSystem.playWither()
+      showToast(
+        `⚠️ [바가지 요금 신고 접수] 정가보다 비싸게 판매하여 손님들의 원성을 샀습니다! 마을 신뢰가 무너져 보유 명성이 절반으로 급락했습니다.`,
+        'warning'
+      )
+    } else {
+      showToast(`[${cust.name}] 손님 결제 완료! +₩${totalBill.toLocaleString()} 매출 달성! (평판 +${earnedReputation}P)`, 'success')
+    }
 
     setTimeout(() => {
       setCustomers(prev => prev.filter(c => c.id !== customerId))
@@ -1230,8 +1407,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const martTimer = setInterval(() => {
       // 영업 시간 (오전 8시 ~ 밤 9시) 및 재고 확인
       const stockedShelves = shelves.filter(s => s.cropId && s.stock > 0)
-      // 기준가의 10% 이상으로 가격을 올린 상품은 손님이 구매하지 않습니다.
-      const purchasableShelves = stockedShelves.filter(shelf => shelf.price < shelf.basePrice * 1.1)
+      // 기준가의 10%를 초과하여 가격을 올린 상품은 손님이 구매하지 않습니다. (+10% 가격은 정상 구매)
+      const purchasableShelves = stockedShelves.filter(shelf => shelf.price <= Math.round(shelf.basePrice * 1.101))
       if (purchasableShelves.length === 0) return
 
       // 현재 매장에 손님이 4명 이하일 때만 추가
@@ -1248,6 +1425,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 1~2개 구매
         const buyCount = Math.min(targetShelf.stock, Math.floor(Math.random() * 2) + 1)
         const unitPrice = targetShelf.price > 0 ? targetShelf.price : (cropDef?.basePrice || 2000)
+        const isOverpriced = targetShelf.price > targetShelf.basePrice
 
         // 손님이 장바구니에 담는 순간 재고를 확보하고, 가격에 따라 계산대로 오는 시간이 달라집니다.
         setShelves(sList =>
@@ -1271,7 +1449,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               cropId: targetShelf.cropId!,
               name: cropDef?.nameKr || '농산물',
               count: buyCount,
-              unitPrice: unitPrice
+              unitPrice: unitPrice,
+              isOverpriced: isOverpriced
             }
           ]
         }
@@ -1345,17 +1524,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       contractsFulfilled: nextFulfilled
     }))
 
-    // 계약 완료 처리: 완료된 계약은 즉시 목록에서 제거되고 새로운 발주가 입고됨!
-    setContracts(prev => {
-      const remaining = prev.filter(c => c.id !== contractId)
-      const currentCropIds = remaining.map(c => c.cropId)
-      const newContract = generateRandomContract(player.season, player.day, currentCropIds)
-      return [...remaining, newContract]
-    })
+    // 계약 완료 처리: 해당 계약을 isCompleted: true로 변경하여 완료 상태로 유지 (내일 아침 새로운 발주가 등록됨)
+    setContracts(prev =>
+      prev.map(c => (c.id === contractId ? { ...c, isCompleted: true } : c))
+    )
 
     SoundSystem.playFanfare()
     showToast(
-      `대형 계약 납품 완료! [${ct.clientName}]에 출하하여 ₩${ct.rewardGold.toLocaleString()}과 평판 +${ct.rewardReputation} 획득! 새로운 발주가 등록되었습니다.`,
+      `대형 계약 납품 완료! [${ct.clientName}]에 출하하여 ₩${ct.rewardGold.toLocaleString()}과 평판 +${ct.rewardReputation} 획득! (새로운 발주는 내일 아침 등록됩니다)`,
       'success'
     )
 
@@ -1970,6 +2146,92 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return rotted
   }, [showToast])
 
+  // --- 호미 스킨 & 명성 가챠 시스템 ---
+  const drawHoeGacha = useCallback((count: number): HoeSkin[] | null => {
+    const cost = count === 1 ? HOE_GACHA_SINGLE_COST : count === 5 ? HOE_GACHA_MULTI_COST : count * HOE_GACHA_SINGLE_COST
+    if (player.reputation < cost) {
+      SoundSystem.playWither()
+      showToast(`⚠️ 명성(평판) 포인트가 부족합니다! (필요: ${cost}P, 보유: ${player.reputation}P)`, 'warning')
+      return null
+    }
+
+    const pool = HOE_SKINS.filter(s => s.weight > 0)
+    const totalWeight = pool.reduce((sum, s) => sum + s.weight, 0)
+    if (totalWeight <= 0 || pool.length === 0) return null
+
+    const results: HoeSkin[] = []
+    let duplicateCount = 0
+    const currentlyUnlocked = new Set(hoeGacha.unlockedSkinIds)
+    const newlyUnlockedIds: string[] = []
+
+    for (let i = 0; i < count; i++) {
+      let rand = Math.random() * totalWeight
+      let picked = pool[0]
+      for (const skin of pool) {
+        if (rand < skin.weight) {
+          picked = skin
+          break
+        }
+        rand -= skin.weight
+      }
+      results.push(picked)
+
+      if (currentlyUnlocked.has(picked.id)) {
+        duplicateCount++
+      } else {
+        currentlyUnlocked.add(picked.id)
+        newlyUnlockedIds.push(picked.id)
+      }
+    }
+
+    const refundGold = duplicateCount * HOE_DUPLICATE_GOLD_REFUND
+
+    // 명성 차감 및 중복 골드 환급
+    setPlayer(prev => ({
+      ...prev,
+      reputation: Math.max(0, prev.reputation - cost),
+      gold: prev.gold + refundGold,
+      totalEarned: prev.totalEarned + refundGold
+    }))
+
+    // 스킨 해금 반영
+    if (newlyUnlockedIds.length > 0) {
+      setHoeGacha(prev => ({
+        ...prev,
+        unlockedSkinIds: Array.from(new Set([...prev.unlockedSkinIds, ...newlyUnlockedIds]))
+      }))
+    }
+
+    SoundSystem.playFanfare()
+    if (refundGold > 0) {
+      showToast(`🎁 명성 호미 뽑기 완료! 신규 ${newlyUnlockedIds.length}종 획득, 중복 환급 +₩${refundGold.toLocaleString()}`, 'success')
+    } else {
+      showToast(`🎁 명성 호미 뽑기 완료! 신규 스킨 ${newlyUnlockedIds.length}종을 획득했습니다!`, 'success')
+    }
+
+    return results
+  }, [player.reputation, hoeGacha.unlockedSkinIds, showToast])
+
+  const equipHoeSkin = useCallback((skinId: string): boolean => {
+    if (!hoeGacha.unlockedSkinIds.includes(skinId)) {
+      showToast('⚠️ 아직 획득하지 않은 호미 스킨입니다.', 'warning')
+      return false
+    }
+    const skin = HOE_SKINS_MAP.get(skinId)
+    setHoeGacha(prev => ({ ...prev, equippedSkinId: skinId }))
+    SoundSystem.playHarvest()
+    showToast(`✨ [${skin?.name || skinId}] 호미 스킨을 장착했습니다!`, 'success')
+    return true
+  }, [hoeGacha.unlockedSkinIds, showToast])
+
+  const toggleFloatingCursor = useCallback(() => {
+    setHoeGacha(prev => {
+      const nextVal = !prev.isFloatingCursorEnabled
+      showToast(nextVal ? '✨ 마우스 추적 호미가 활성화되었습니다.' : '마우스 추적 호미가 숨겨졌습니다.', 'info')
+      return { ...prev, isFloatingCursorEnabled: nextVal }
+    })
+  }, [showToast])
+
   const currentYear = Math.floor((player.day - 1) / DAYS_PER_CYCLE) + 1
   const currentSeasonDay = ((player.day - 1) % DAYS_PER_SEASON) + 1
 
@@ -1989,6 +2251,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       gridSize,
       restaurant,
       fishing,
+      hoeGacha,
       currentYear,
       currentSeasonDay,
       setActiveTab,
@@ -2022,6 +2285,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyBait,
       fish,
       processCrop,
+      drawHoeGacha,
+      equipHoeSkin,
+      toggleFloatingCursor,
       addFunds,
       giveSeeds,
       giveCrops,
@@ -2053,6 +2319,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       gridSize,
       restaurant,
       fishing,
+      hoeGacha,
       currentYear,
       currentSeasonDay,
       handleTileClick,
@@ -2083,6 +2350,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyBait,
       fish,
       processCrop,
+      drawHoeGacha,
+      equipHoeSkin,
+      toggleFloatingCursor,
       addFunds,
       giveSeeds,
       giveCrops,

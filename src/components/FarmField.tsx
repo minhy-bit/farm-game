@@ -45,6 +45,8 @@ export const FarmField: React.FC = () => {
   const hasAutoTill = (upgrades.find(u => u.id === 'up_auto_till')?.level || 0) > 0
   const autoPlanterLevel = upgrades.find(u => u.id === 'up_auto_planter')?.level || 0
   const autoPlantingSize = Math.min(autoPlanterLevel + 1, gridSize)
+  const autoHarvesterLevel = upgrades.find(u => u.id === 'up_auto_harvester')?.level || 0
+  const autoHarvestingSize = Math.min(autoHarvesterLevel + 1, gridSize)
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in">
@@ -77,6 +79,12 @@ export const FarmField: React.FC = () => {
           {autoPlanterLevel > 0 && selectedTool === 'autoPlanter' && (
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-cyan-950/80 text-cyan-300 border border-cyan-500/60 shadow-sm">
               🤖 클릭한 칸부터 {autoPlantingSize}×{autoPlantingSize} 자동 파종
+            </span>
+          )}
+          {autoHarvesterLevel > 0 && (
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-500/60 shadow-sm flex items-center space-x-1">
+              <span>🌾</span>
+              <span>광역 수확 {autoHarvestingSize}×{autoHarvestingSize} 가동중</span>
             </span>
           )}
         </div>
@@ -268,7 +276,9 @@ export const FarmField: React.FC = () => {
                           ? '씨앗 심기'
                           : '물주기 또는 씨앗 심기'
                         : isMature
-                        ? `✨ 클릭하여 수확! (+${crop?.yieldCount || 2}개 획득)`
+                        ? autoHarvesterLevel > 0
+                          ? `🌾 클릭하여 ${autoHarvestingSize}×${autoHarvestingSize} 범위 일괄 수확!`
+                          : `✨ 클릭하여 수확! (+${crop?.yieldCount || 2}개 획득)`
                         : (tile.waterCount || 0) >= 4
                         ? `⚠️ ${crop?.nameKr} 과습 위험! (한 번 더 주면 썩음: ${tile.waterCount}/5회)`
                         : (tile.waterCount || 0) >= 2

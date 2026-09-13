@@ -9,13 +9,16 @@ const SEASON_LABELS: Record<Season, string> = {
 }
 
 export const getRequiredCount = (crop: CropDef): number => {
-  if (crop.basePrice >= 5000) return 4
-  if (crop.basePrice >= 3000) return 6
+  if (crop.basePrice >= 2500) return 4
+  if (crop.basePrice >= 1500) return 6
   return 8
 }
 
+/**
+ * B2B 납품 보상금: 마트 판매 정가(+10% 프리미엄 포함)보다 대량 납품이 훨씬 더 비싸게 보상되도록 1.55배 책정
+ */
 export const getRewardGold = (crop: CropDef, requiredCount: number): number =>
-  Math.ceil((crop.basePrice * requiredCount * 1.45) / 500) * 500
+  Math.ceil((crop.basePrice * requiredCount * 1.55) / 100) * 100
 
 export interface ClientPreset {
   name: string
@@ -149,7 +152,7 @@ export const INITIAL_CONTRACTS: Contract[] = [
     cropId: 'crop_potato',
     cropName: '포슬알감자',
     requiredCount: 8,
-    rewardGold: 14000,
+    rewardGold: 4000,
     rewardReputation: 15,
     deadlineDay: 5,
     isCompleted: false,
@@ -162,7 +165,7 @@ export const INITIAL_CONTRACTS: Contract[] = [
     cropId: 'crop_strawberry',
     cropName: '설향딸기',
     requiredCount: 6,
-    rewardGold: 21000,
+    rewardGold: 6000,
     rewardReputation: 25,
     deadlineDay: 6,
     isCompleted: false,
@@ -175,7 +178,7 @@ export const INITIAL_CONTRACTS: Contract[] = [
     cropId: 'crop_cabbage',
     cropName: '아삭양배추',
     requiredCount: 10,
-    rewardGold: 23000,
+    rewardGold: 6600,
     rewardReputation: 30,
     deadlineDay: 7,
     isCompleted: false,
@@ -188,7 +191,7 @@ export const INITIAL_CONTRACTS: Contract[] = [
     cropId: 'crop_scallion',
     cropName: '조선대파',
     requiredCount: 12,
-    rewardGold: 18500,
+    rewardGold: 5400,
     rewardReputation: 20,
     deadlineDay: 8,
     isCompleted: false,

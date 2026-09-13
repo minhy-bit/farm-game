@@ -32,6 +32,7 @@ export const LocalMart: React.FC = () => {
   const [selectedShelf, setSelectedShelf] = useState<MartShelf | null>(null)
   const [selectedItemTargetId, setSelectedItemTargetId] = useState<string>('')
   const [stockCount, setStockCount] = useState<number>(5)
+  const [priceTier, setPriceTier] = useState<'-10' | '0' | '+10'>('0')
   const [customPrice, setCustomPrice] = useState<number>(2500)
 
   // 진열 가능한 인벤토리 (농작물 + 가공품)
@@ -43,23 +44,51 @@ export const LocalMart: React.FC = () => {
   const hasColdShowcase = upgrades.find(u => u.id === 'up_cold_showcase')?.level || 0
   const selectedItem = sellableItems.find(item => item.targetId === selectedItemTargetId)
   const selectedBasePrice = selectedItem?.unitPrice || CROPS_MAP.get(selectedItemTargetId)?.basePrice || 0
-  const selectedPriceRatio = selectedBasePrice > 0 ? customPrice / selectedBasePrice : 1
+
+  const getCalculatedPrice = (basePrice: number, tier: '-10' | '0' | '+10') => {
+    if (tier === '-10') return Math.round(basePrice * 0.9)
+    if (tier === '+10') return Math.round(basePrice * 1.1)
+    return basePrice
+  }
 
   // 진열 모달 열기
   const handleOpenStockModal = (shelf: MartShelf) => {
     setSelectedShelf(shelf)
     if (sellableItems.length > 0) {
       const first = sellableItems[0]
+      const cropDef = CROPS_MAP.get(first.targetId)
+      const basePrice = first.unitPrice || cropDef?.basePrice || 2000
       setSelectedItemTargetId(first.targetId)
       setStockCount(Math.min(first.count, 5))
-      setCustomPrice(first.unitPrice)
+      setPriceTier('0')
+      setCustomPrice(basePrice)
     }
+  }
+
+  // 상품 선택 시
+  const handleSelectItem = (targetId: string) => {
+    setSelectedItemTargetId(targetId)
+    const item = sellableItems.find(i => i.targetId === targetId)
+    const available = inventory
+      .filter(i => i.targetId === targetId)
+      .reduce((sum, i) => sum + i.count, 0)
+    const cropDef = CROPS_MAP.get(targetId)
+    const basePrice = item?.unitPrice || cropDef?.basePrice || 2000
+    setStockCount(Math.min(Math.max(1, available), 5))
+    setCustomPrice(getCalculatedPrice(basePrice, priceTier))
+  }
+
+  // 가격 티어(-10%, 정가, +10%) 변경 시
+  const handleSelectPriceTier = (tier: '-10' | '0' | '+10') => {
+    setPriceTier(tier)
+    setCustomPrice(getCalculatedPrice(selectedBasePrice, tier))
   }
 
   // 진열 확정
   const handleConfirmStock = () => {
     if (!selectedShelf || !selectedItemTargetId) return
-    stockShelf(selectedShelf.id, selectedItemTargetId, stockCount, customPrice)
+    const finalCount = Math.min(stockCount, 5)
+    stockShelf(selectedShelf.id, selectedItemTargetId, finalCount, customPrice)
     setSelectedShelf(null)
   }
 
@@ -174,12 +203,22 @@ export const LocalMart: React.FC = () => {
                           <div className="text-[11px] text-slate-400">
                             남은 재고: <strong className="text-teal-300 font-mono">{shelf.stock}개</strong>
                           </div>
-                          <div className={`text-[10px] font-bold ${shelf.price >= shelf.basePrice * 1.1 ? 'text-rose-400' : shelf.price < shelf.basePrice ? 'text-emerald-400' : 'text-amber-300'}`}>
-                            {shelf.price >= shelf.basePrice * 1.1
-                              ? '가격이 기준가보다 10% 이상 높아 판매되지 않습니다'
+                          <div className={`text-[10px] font-bold ${
+                            shelf.price > Math.round(shelf.basePrice * 1.101)
+                              ? 'text-rose-400'
                               : shelf.price < shelf.basePrice
-                              ? '할인 특가: 손님이 더 빠르게 구매합니다'
-                              : '정가 근처: 일반 속도로 구매합니다'}
+                              ? 'text-emerald-400'
+                              : shelf.price > shelf.basePrice
+                              ? 'text-amber-300'
+                              : 'text-teal-300'
+                          }`}>
+                            {shelf.price > Math.round(shelf.basePrice * 1.101)
+                              ? '가격이 기준가보다 10%를 초과하여 판매되지 않습니다'
+                              : shelf.price < shelf.basePrice
+                              ? '할인 특가(-10%): 손님이 더 빠르게 구매합니다'
+                              : shelf.price > shelf.basePrice
+                              ? '프리미엄(+10%): 고수익 (주의: 거래 평판 감소 또는 보유 명성 실추 위험)'
+                              : '정가 판매: 표준 속도로 구매합니다'}
                           </div>
                         </div>
                       </>
@@ -348,14 +387,11 @@ export const LocalMart: React.FC = () => {
                       return (
                         <button
                           key={item.id}
-                          onClick={() => {
-                            setSelectedItemTargetId(item.targetId)
-                            setCustomPrice(item.unitPrice)
-                            setStockCount(Math.min(item.count, 5))
-                          }}
+                          type="button"
+                          onClick={() => handleSelectItem(item.targetId)}
                           className={`flex items-center space-x-2 p-2.5 rounded-xl border text-left text-xs transition-all ${
                             isSelected
-                              ? 'bg-teal-900/70 border-teal-400 text-white font-bold'
+                              ? 'bg-teal-900/70 border-teal-400 text-white font-bold ring-1 ring-teal-400'
                               : 'bg-farm-surface border-farm-border text-slate-300 hover:border-slate-500'
                           }`}
                         >
@@ -370,72 +406,155 @@ export const LocalMart: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2. 진열 수량 조절 */}
+                {/* 2. 진열 수량 조절 (최대 5개 제한) */}
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">
-                    진열 수량: <span className="text-teal-300 font-mono font-bold">{stockCount}개</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max={Math.min(
-                      20,
-                      inventory
-                        .filter(i => i.targetId === selectedItemTargetId)
-                        .reduce((sum, i) => sum + i.count, 0) || 1
-                    )}
-                    value={stockCount}
-                    onChange={e => setStockCount(parseInt(e.target.value))}
-                    className="w-full accent-teal-500 cursor-pointer"
-                  />
+                  {(() => {
+                    const availableCount = inventory
+                      .filter(i => i.targetId === selectedItemTargetId)
+                      .reduce((sum, i) => sum + i.count, 0)
+                    const maxStockLimit = Math.min(5, availableCount || 1)
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
+                            <span>진열 수량:</span>
+                            <span className="text-teal-300 font-mono font-bold text-sm">{stockCount}개</span>
+                            <span className="text-[10px] text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">1회 최대 5개</span>
+                          </label>
+                          <span className="text-[11px] text-slate-400">
+                            보유: <strong className="text-slate-200 font-mono">{availableCount}개</strong>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="range"
+                            min="1"
+                            max={maxStockLimit}
+                            value={Math.min(stockCount, maxStockLimit)}
+                            onChange={e => setStockCount(Math.min(5, parseInt(e.target.value) || 1))}
+                            className="flex-1 accent-teal-500 cursor-pointer"
+                          />
+                          <div className="flex items-center space-x-1">
+                            {[1, 2, 3, 4, 5].map(cnt => (
+                              <button
+                                key={cnt}
+                                type="button"
+                                disabled={cnt > availableCount}
+                                onClick={() => setStockCount(cnt)}
+                                className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all ${
+                                  stockCount === cnt
+                                    ? 'bg-teal-600 text-white shadow-sm ring-1 ring-teal-400'
+                                    : cnt > availableCount
+                                    ? 'bg-slate-900/40 text-slate-600 border border-slate-800 cursor-not-allowed'
+                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                                }`}
+                              >
+                                {cnt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
 
-                {/* 3. 판매 가격 책정 */}
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">
-                    판매 가격 (개당): <span className="text-amber-300 font-mono font-bold">₩{customPrice.toLocaleString()}</span>
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="number"
-                      step="100"
-                      value={customPrice}
-                      onChange={e => setCustomPrice(Math.max(100, parseInt(e.target.value) || 100))}
-                      className="flex-1 bg-farm-bg border border-farm-border rounded-xl px-3 py-2 text-sm text-white font-mono"
-                    />
-                    {/* 빠른 가격 프리셋 */}
+                {/* 3. 판매 가격 책정 (-10%, 정가, +10%) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300">
+                      판매 가격 (기준가: <span className="font-mono text-slate-200">₩{selectedBasePrice.toLocaleString()}</span>)
+                    </label>
+                    <span className="text-sm font-bold text-amber-300 font-mono">
+                      개당 ₩{customPrice.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* -10% 할인 */}
                     <button
-                      onClick={() => {
-                        if (selectedBasePrice) setCustomPrice(Math.round(selectedBasePrice * 0.8))
-                      }}
-                      className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs rounded-xl font-bold border border-slate-700"
-                      title="20% 할인 특가 (빠른 회전)"
+                      type="button"
+                      onClick={() => handleSelectPriceTier('-10')}
+                      className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center space-y-1 ${
+                        priceTier === '-10'
+                          ? 'bg-emerald-950/80 border-emerald-400 text-white shadow-md shadow-emerald-950/50 ring-2 ring-emerald-500/50'
+                          : 'bg-farm-surface border-farm-border text-slate-300 hover:border-slate-500'
+                      }`}
                     >
-                      -20%
+                      <span className="text-[11px] font-bold text-emerald-400 flex items-center space-x-1">
+                        <span>-10%</span>
+                        <span className="text-[9px] bg-emerald-900/80 px-1 py-0.5 rounded text-emerald-300 font-normal">할인</span>
+                      </span>
+                      <span className="text-xs font-mono font-bold">
+                        ₩{Math.round(selectedBasePrice * 0.9).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-slate-400">⚡ 빠른 회전</span>
                     </button>
+
+                    {/* 정가 */}
                     <button
-                      onClick={() => {
-                        if (selectedBasePrice) setCustomPrice(selectedBasePrice)
-                      }}
-                      className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-xl font-bold border border-slate-700"
-                      title="정가 판매"
+                      type="button"
+                      onClick={() => handleSelectPriceTier('0')}
+                      className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center space-y-1 ${
+                        priceTier === '0'
+                          ? 'bg-teal-950/80 border-teal-400 text-white shadow-md shadow-teal-950/50 ring-2 ring-teal-500/50'
+                          : 'bg-farm-surface border-farm-border text-slate-300 hover:border-slate-500'
+                      }`}
                     >
-                      정가
+                      <span className="text-[11px] font-bold text-teal-300 flex items-center space-x-1">
+                        <span>정가</span>
+                        <span className="text-[9px] bg-teal-900/80 px-1 py-0.5 rounded text-teal-300 font-normal">표준</span>
+                      </span>
+                      <span className="text-xs font-mono font-bold">
+                        ₩{selectedBasePrice.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-slate-400">⚖️ 표준 속도</span>
                     </button>
+
+                    {/* +10% 할증 */}
                     <button
-                      onClick={() => {
-                        if (selectedBasePrice) setCustomPrice(Math.round(selectedBasePrice * 1.25))
-                      }}
-                      className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs rounded-xl font-bold border border-slate-700"
-                      title="프리미엄 고마진"
+                      type="button"
+                      onClick={() => handleSelectPriceTier('+10')}
+                      className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center space-y-1 ${
+                        priceTier === '+10'
+                          ? 'bg-amber-950/80 border-amber-400 text-white shadow-md shadow-amber-950/50 ring-2 ring-amber-500/50'
+                          : 'bg-farm-surface border-farm-border text-slate-300 hover:border-slate-500'
+                      }`}
                     >
-                      +25%
+                      <span className="text-[11px] font-bold text-amber-400 flex items-center space-x-1">
+                        <span>+10%</span>
+                        <span className="text-[9px] bg-amber-900/80 px-1 py-0.5 rounded text-amber-300 font-normal">고마진</span>
+                      </span>
+                      <span className="text-xs font-mono font-bold">
+                        ₩{Math.round(selectedBasePrice * 1.1).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-slate-400">💎 고수익</span>
                     </button>
                   </div>
-                  {selectedBasePrice > 0 && (
-                    <p className={`mt-2 text-[11px] font-medium ${selectedPriceRatio >= 1.1 ? 'text-rose-400' : selectedPriceRatio < 1 ? 'text-emerald-400' : 'text-amber-300'}`}>
-                      기준가 ₩{selectedBasePrice.toLocaleString()} 대비 {Math.round((selectedPriceRatio - 1) * 100)}% · {selectedPriceRatio >= 1.1 ? '10% 이상 할증: 손님이 구매하지 않습니다.' : selectedPriceRatio < 1 ? '할인 가격: 더 빠르게 구매합니다.' : '가격이 높을수록 구매까지 시간이 더 걸립니다.'}
-                    </p>
+
+                  {/* 완판 시 예상 수익 */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-slate-400">
+                      총 {Math.min(stockCount, 5)}개 완판 시 예상 수익:
+                    </span>
+                    <span className="font-mono font-bold text-amber-300">
+                      ₩{(customPrice * Math.min(stockCount, 5)).toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* 바가지 요금 주의 경고문 (확률 수치는 생략) */}
+                  {priceTier === '+10' && (
+                    <div className="p-2.5 rounded-xl bg-rose-950/50 border border-rose-600/70 text-rose-200 flex items-start space-x-2 animate-fade-in shadow-inner">
+                      <span className="text-sm flex-shrink-0 mt-0.5">⚠️</span>
+                      <div className="space-y-0.5 text-left">
+                        <div className="text-[11px] font-bold text-rose-300">바가지 요금 주의 경고</div>
+                        <p className="text-[10px] text-rose-200/90 leading-tight">
+                          정가보다 높은 가격으로 판매할 경우, 손님들의 불만으로 인해 결제 시 얻는 평판이 감소하거나 마을에서 쌓은 명성이 급격히 실추될 수 있습니다.
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
 

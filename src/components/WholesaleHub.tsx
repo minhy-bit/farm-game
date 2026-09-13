@@ -271,7 +271,7 @@ export const WholesaleHub: React.FC = () => {
                           <Truck className="w-4 h-4" />
                           <span>
                             {contract.isCompleted
-                              ? '납품 및 정산 완료됨'
+                              ? '출하 완료 (내일 아침 새 발주 계약 등록)'
                               : canFulfill
                               ? '트럭에 적재하여 즉시 납품 출하!'
                               : `수확물 부족 (${currentOwned}/${contract.requiredCount})`}

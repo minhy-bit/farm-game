@@ -7,8 +7,8 @@ export const CROPS: CropDef[] = [
     nameKr: '설향딸기',
     category: 'fruit',
     season: ['spring', 'winter'],
-    seedPrice: 800,
-    basePrice: 2600,
+    seedPrice: 400,
+    basePrice: 650,
     growthDays: 3,
     stages: 4,
     description: '향긋하고 당도가 뛰어난 봄의 여왕 딸기. 남녀노소 모두가 좋아합니다.',
@@ -16,15 +16,15 @@ export const CROPS: CropDef[] = [
     color: '#ef4444',
     canProcess: true,
     processedName: '수제 설향딸기청',
-    processedPrice: 4320
+    processedPrice: 1080
   },
   {
     id: 'crop_potato',
     nameKr: '포슬알감자',
     category: 'vegetable',
     season: ['spring'],
-    seedPrice: 400,
-    basePrice: 1300,
+    seedPrice: 200,
+    basePrice: 325,
     growthDays: 2,
     stages: 4,
     description: '삶아 먹어도 볶아 먹어도 맛있는 햇감자. 초보 귀농인의 든든한 주력 작물.',
@@ -37,8 +37,8 @@ export const CROPS: CropDef[] = [
     nameKr: '조선대파',
     category: 'vegetable',
     season: ['spring', 'autumn'],
-    seedPrice: 350,
-    basePrice: 1150,
+    seedPrice: 180,
+    basePrice: 290,
     growthDays: 2,
     stages: 4,
     description: '한국인의 식탁에 빠질 수 없는 필수 채소. 마트에서 꾸준히 잘 팔립니다.',
@@ -51,8 +51,8 @@ export const CROPS: CropDef[] = [
     nameKr: '아삭양배추',
     category: 'vegetable',
     season: ['spring'],
-    seedPrice: 500,
-    basePrice: 1700,
+    seedPrice: 250,
+    basePrice: 425,
     growthDays: 3,
     stages: 4,
     description: '속이 꽉 차고 아삭한 식감의 양배추. 건강식 샐러드용으로 인기가 높습니다.',
@@ -67,8 +67,8 @@ export const CROPS: CropDef[] = [
     nameKr: '완숙토마토',
     category: 'fruit',
     season: ['summer'],
-    seedPrice: 650,
-    basePrice: 2200,
+    seedPrice: 330,
+    basePrice: 550,
     growthDays: 3,
     stages: 4,
     description: '새빨갛게 익어 비타민이 풍부한 완숙 토마토. 주스로 가공하기에 제격입니다.',
@@ -76,15 +76,15 @@ export const CROPS: CropDef[] = [
     color: '#dc2626',
     canProcess: true,
     processedName: '유기농 토마토 퓨레',
-    processedPrice: 3720
+    processedPrice: 930
   },
   {
     id: 'crop_corn',
     nameKr: '찰옥수수',
     category: 'grain',
     season: ['summer'],
-    seedPrice: 600,
-    basePrice: 1950,
+    seedPrice: 300,
+    basePrice: 490,
     growthDays: 2,
     stages: 4,
     description: '쫀득쫀득 씹는 맛이 일품인 강원도식 찰옥수수. 여름철 최고의 간식.',
@@ -97,8 +97,8 @@ export const CROPS: CropDef[] = [
     nameKr: '꿀수박',
     category: 'fruit',
     season: ['summer'],
-    seedPrice: 900,
-    basePrice: 3480,
+    seedPrice: 450,
+    basePrice: 870,
     growthDays: 4,
     stages: 4,
     description: '무더위를 날려주는 시원하고 달콤한 명품 수박. 높은 판매가를 자랑합니다.',
@@ -106,15 +106,15 @@ export const CROPS: CropDef[] = [
     color: '#15803d',
     canProcess: true,
     processedName: '시원한 땡모반 수박주스',
-    processedPrice: 7200
+    processedPrice: 1800
   },
   {
     id: 'crop_chili',
     nameKr: '청양고추',
     category: 'vegetable',
     season: ['summer', 'autumn'],
-    seedPrice: 450,
-    basePrice: 1600,
+    seedPrice: 230,
+    basePrice: 400,
     growthDays: 2,
     stages: 4,
     description: '알싸하게 매운맛이 일품인 청양고추. 건조실에서 태양초 고춧가루로 가공 가능합니다.',
@@ -122,7 +122,7 @@ export const CROPS: CropDef[] = [
     color: '#b91c1c',
     canProcess: true,
     processedName: '명품 태양초 고춧가루',
-    processedPrice: 3120
+    processedPrice: 780
   },
 
   // --- 가을 작물 ---
@@ -131,8 +131,8 @@ export const CROPS: CropDef[] = [
     nameKr: '황금사과',
     category: 'fruit',
     season: ['autumn'],
-    seedPrice: 720,
-    basePrice: 2280,
+    seedPrice: 360,
+    basePrice: 570,
     growthDays: 3,
     stages: 4,
     description: '가을 햇살을 듬뿍 머금은 명품 사과. 착즙기로 프리미엄 사과즙을 생산할 수 있습니다.',
@@ -140,15 +140,15 @@ export const CROPS: CropDef[] = [
     color: '#e11d48',
     canProcess: true,
     processedName: '100% 순수 착즙 사과즙',
-    processedPrice: 5700
+    processedPrice: 1425
   },
   {
     id: 'crop_sweet_potato',
     nameKr: '꿀고구마',
     category: 'vegetable',
     season: ['autumn'],
-    seedPrice: 700,
-    basePrice: 2400,
+    seedPrice: 350,
+    basePrice: 600,
     growthDays: 3,
     stages: 4,
     description: '구우면 꿀이 뚝뚝 떨어지는 베니하루카 꿀고구마. 건조기로 말랭이를 만들 수 있습니다.',
@@ -156,15 +156,15 @@ export const CROPS: CropDef[] = [
     color: '#9333ea',
     canProcess: true,
     processedName: '달콤 쫀득 고구마말랭이',
-    processedPrice: 4080
+    processedPrice: 1020
   },
   {
     id: 'crop_pumpkin',
     nameKr: '단호박',
     category: 'vegetable',
     season: ['autumn'],
-    seedPrice: 900,
-    basePrice: 3100,
+    seedPrice: 450,
+    basePrice: 775,
     growthDays: 3,
     stages: 4,
     description: '포근포근하고 달콤한 미니 단호박. 캠핑족과 이유식 주부들에게 인기 만점.',
@@ -177,8 +177,8 @@ export const CROPS: CropDef[] = [
     nameKr: '가을햅쌀',
     category: 'grain',
     season: ['autumn'],
-    seedPrice: 850,
-    basePrice: 2900,
+    seedPrice: 430,
+    basePrice: 725,
     growthDays: 3,
     stages: 4,
     description: '기름진 황금 들녘에서 수확한 기름진 햅쌀. 대량 납품 계약 단골 품목.',
@@ -193,8 +193,8 @@ export const CROPS: CropDef[] = [
     nameKr: '파프리카',
     category: 'vegetable',
     season: ['winter', 'spring'],
-    seedPrice: 660,
-    basePrice: 2220,
+    seedPrice: 330,
+    basePrice: 555,
     growthDays: 3,
     stages: 4,
     description: '스마트 온실에서 알록달록 재배되는 파프리카. 아삭한 단맛이 특징.',
@@ -207,8 +207,8 @@ export const CROPS: CropDef[] = [
     nameKr: '표고버섯',
     category: 'special',
     season: ['winter', 'autumn'],
-    seedPrice: 780,
-    basePrice: 2520,
+    seedPrice: 390,
+    basePrice: 630,
     growthDays: 3,
     stages: 4,
     description: '참나무 원목에서 자라난 깊은 향의 표고버섯. 고급 셰프들이 찾는 귀한 식재료.',
@@ -216,44 +216,44 @@ export const CROPS: CropDef[] = [
     color: '#78350f',
     canProcess: true,
     processedName: '자연건조 특등 표고버섯채',
-    processedPrice: 6600
+    processedPrice: 1650
   },
 
   // ==========================================
-  // --- 2년차+ 해금: 고부가가치 마스터 작물 ---
-  // (사계절 1사이클 완주 시 종묘상 해금 / 수확량 증가 / 고가 / 긴 생육시간)
+  // --- 3년차+ 해금: 고부가가치 마스터 작물 ---
+  // (사계절 3사이클 완주 시 종묘상 해금 / 수확량 증가 / 고가 / 긴 생육시간)
   // ==========================================
-  // [2년차 봄 마스터 작물]
+  // [3년차 봄 마스터 작물]
   {
     id: 'crop_king_strawberry',
     nameKr: '명품 금향딸기',
     category: 'fruit',
     season: ['spring'],
-    seedPrice: 1680,
-    basePrice: 4500,
+    seedPrice: 840,
+    basePrice: 1125,
     growthDays: 5,
     stages: 4,
     yieldCount: 4,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '황금빛 당도를 자랑하는 대과형 딸기. 5일 동안 정성껏 가꾸면 4개를 수확합니다.',
     icon: '🍓',
     color: '#f43f5e',
     canProcess: true,
     processedName: '특제 금향딸기 콩포트',
-    processedPrice: 10800
+    processedPrice: 2700
   },
   {
     id: 'crop_angelica',
     nameKr: '지리산 햇두릅',
     category: 'vegetable',
     season: ['spring'],
-    seedPrice: 1920,
-    basePrice: 5520,
+    seedPrice: 960,
+    basePrice: 1380,
     growthDays: 6,
     stages: 4,
     yieldCount: 3,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '이른 봄 산기슭의 맑은 기운을 품고 자란 명품 산나물. 6일간의 생육 끝에 귀한 3순을 수확합니다.',
     icon: '🌿',
@@ -261,77 +261,77 @@ export const CROPS: CropDef[] = [
     canProcess: false
   },
 
-  // [2년차 여름 마스터 작물]
+  // [3년차 여름 마스터 작물]
   {
     id: 'crop_apple_mango',
     nameKr: '제주 애플망고',
     category: 'fruit',
     season: ['summer'],
-    seedPrice: 2700,
-    basePrice: 8100,
+    seedPrice: 1350,
+    basePrice: 2025,
     growthDays: 6,
     stages: 4,
     yieldCount: 3,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '사과 향과 진한 과즙이 일품인 제주 명품 과일. 6일 동안 강렬한 햇살을 받고 자랍니다.',
     icon: '🥭',
     color: '#f97316',
     canProcess: true,
     processedName: '애플망고 프리미엄 젤라또',
-    processedPrice: 17400
+    processedPrice: 4350
   },
   {
     id: 'crop_shine_muscat',
     nameKr: '샤인머스캣 포도',
     category: 'fruit',
     season: ['summer', 'autumn'],
-    seedPrice: 3120,
-    basePrice: 9300,
+    seedPrice: 1560,
+    basePrice: 2325,
     growthDays: 7,
     stages: 4,
     yieldCount: 4,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '망고 향이 퍼지는 귀족 포도. 7일 동안 정성을 다해 알알이 탐스럽게 영급니다.',
     icon: '🍇',
     color: '#84cc16',
     canProcess: true,
     processedName: '샤인머스캣 스파클링 에이드',
-    processedPrice: 20400
+    processedPrice: 5100
   },
 
-  // [2년차 가을 마스터 작물]
+  // [3년차 가을 마스터 작물]
   {
     id: 'crop_red_ginseng',
     nameKr: '6년근 고려홍삼',
     category: 'special',
     season: ['autumn'],
-    seedPrice: 4500,
-    basePrice: 14400,
+    seedPrice: 2250,
+    basePrice: 3600,
     growthDays: 8,
     stages: 4,
     yieldCount: 3,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '가을의 대지와 농부의 땀방울이 키워낸 최고의 보약. 8일간의 긴 생육 끝에 막대한 수익을 안겨줍니다.',
     icon: '🪵',
     color: '#854d0e',
     canProcess: true,
     processedName: '진한 고려홍삼 농축액',
-    processedPrice: 34800
+    processedPrice: 8700
   },
   {
     id: 'crop_jujube',
     nameKr: '보은 명품 왕대추',
     category: 'fruit',
     season: ['autumn'],
-    seedPrice: 1560,
-    basePrice: 4680,
+    seedPrice: 780,
+    basePrice: 1170,
     growthDays: 5,
     stages: 4,
     yieldCount: 4,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '사과만큼 커다랗고 아삭 달콤한 보은 왕대추. 5일 동안 익어 4알씩 풍성하게 수확합니다.',
     icon: '🫒',
@@ -339,44 +339,44 @@ export const CROPS: CropDef[] = [
     canProcess: false
   },
 
-  // [2년차 겨울 온실 마스터 작물]
+  // [3년차 겨울 온실 마스터 작물]
   {
     id: 'crop_matsutake',
     nameKr: '설국 자연산 송이버섯',
     category: 'special',
     season: ['winter'],
-    seedPrice: 3900,
-    basePrice: 11700,
+    seedPrice: 1950,
+    basePrice: 2925,
     growthDays: 7,
     stages: 4,
     yieldCount: 3,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '솔향을 품고 눈 속에서 자라난 귀한 자연산 송이. 7일간의 정성 어린 보살핌이 필요합니다.',
     icon: '🍄',
     color: '#713f12',
     canProcess: true,
     processedName: '황금 송이버섯 건채',
-    processedPrice: 27000
+    processedPrice: 6750
   },
   {
     id: 'crop_hallabong',
     nameKr: '제주 명품 한라봉',
     category: 'fruit',
     season: ['winter'],
-    seedPrice: 2280,
-    basePrice: 6600,
+    seedPrice: 1140,
+    basePrice: 1650,
     growthDays: 6,
     stages: 4,
     yieldCount: 4,
-    unlockCycle: 2,
+    unlockCycle: 3,
     isMasterCrop: true,
     description: '달콤한 과육을 자랑하는 겨울의 명품 감귤. 6일의 겨울 햇살을 받고 완숙됩니다.',
     icon: '🍊',
     color: '#ea580c',
     canProcess: true,
     processedName: '달콤 한라봉 마멀레이드',
-    processedPrice: 15000
+    processedPrice: 3750
   }
 ]
 

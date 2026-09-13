@@ -85,6 +85,7 @@ export interface Customer {
     name: string
     count: number
     unitPrice: number
+    isOverpriced?: boolean
   }[]
   shelfTargetIndex?: number
 }
@@ -185,3 +186,26 @@ export interface RestaurantState {
   unlockedUtensils: CookingUtensilType[]
   cookedInventory: CookedDishItem[]
 }
+
+// --- 명성 뽑기 호미 스킨 시스템 ---
+export type HoeSkinGrade = 'normal' | 'rare' | 'epic' | 'legendary'
+
+export interface HoeSkin {
+  id: string
+  name: string
+  grade: HoeSkinGrade
+  gradeName: string
+  icon: string
+  color: string
+  glowColor: string
+  trailEffect: 'none' | 'sparkle' | 'leaf' | 'gold' | 'rainbow'
+  description: string
+  weight: number // 뽑기 가중치
+}
+
+export interface HoeGachaState {
+  unlockedSkinIds: string[]
+  equippedSkinId: string
+  isFloatingCursorEnabled: boolean
+}
+

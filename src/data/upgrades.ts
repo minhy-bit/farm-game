@@ -58,6 +58,17 @@ export const UPGRADES: UpgradeItem[] = [
     bonusText: '자동 파종 범위 2×2 ~ 5×5'
   },
   {
+    id: 'up_auto_harvester',
+    category: 'farm',
+    name: '스마트 광역 콤바인 수확기',
+    desc: '완숙 작물을 클릭할 때 주변 범위의 모든 완숙 작물을 한 번에 일괄 수확합니다. 단계가 오를수록 수확 범위가 넓어집니다. (Lv.1 2×2 → Lv.4 5×5)',
+    cost: 18000,
+    level: 0,
+    maxLevel: 4,
+    icon: '🌾',
+    bonusText: '클릭 시 일괄 수확 범위 2×2 ~ 5×5'
+  },
+  {
     id: 'up_fertile_soil',
     category: 'farm',
     name: '친환경 유용미생물(EM) 비옥토',

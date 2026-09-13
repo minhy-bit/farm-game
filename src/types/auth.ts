@@ -1,4 +1,4 @@
-import { FishingState } from './game'
+import { FishingState, HoeGachaState } from './game'
 
 export interface UserProfile {
   username: string
@@ -27,4 +27,5 @@ export interface SaveGamePayload {
   restaurant: any
   gridSize: number
   fishing?: FishingState
+  hoeGacha?: HoeGachaState
 }

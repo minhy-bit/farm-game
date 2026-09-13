@@ -31,6 +31,9 @@ export interface FarmGameControllerAPI {
   giveCrops: (cropId: string, count: number) => void
   forceDecayTile?: (tileIndex?: number) => boolean
   forceRotCrop?: (tileIndex?: number) => boolean
+  drawHoeGacha?: (count: number) => unknown
+  equipHoeSkin?: (skinId: string) => boolean
+  toggleFloatingCursor?: () => void
   playBgm?: (trackId?: string) => void
   stopBgm?: () => void
   toggleBgm?: () => boolean

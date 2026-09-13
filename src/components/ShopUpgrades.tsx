@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { CROPS } from '../data/crops'
-import { BAIT_PRICE, FISHING_ROD_PRICE } from '../data/fishing'
 import {
   ShoppingBag,
   Sprout,
@@ -11,16 +10,17 @@ import {
   Calendar,
   Layers,
   ArrowUpCircle,
-  Lock,
-  Anchor
+  Lock
 } from 'lucide-react'
 
 export const ShopUpgrades: React.FC = () => {
-  const { player, buySeeds, buyUpgrade, upgrades, currentYear, fishing, buyFishingRod, buyBait } = useGame()
+  const { player, buySeeds, buyUpgrade, upgrades, currentYear } = useGame()
   const [subTab, setSubTab] = useState<'seeds' | 'upgrades'>('seeds')
   const [seasonFilter, setSeasonFilter] = useState<'all' | 'spring' | 'summer' | 'autumn' | 'winter'>('all')
 
   const filteredCrops = CROPS.filter(crop => {
+    // 마스터 작물은 3사이클이 지나야만 (currentYear >= 3) 상점에 나타남
+    if (crop.isMasterCrop && currentYear < 3) return false
     if (seasonFilter === 'all') return true
     return crop.season.includes(seasonFilter)
   })
@@ -109,9 +109,9 @@ export const ShopUpgrades: React.FC = () => {
                   현재 진행: {currentYear}년차 사이클 (1계절 = 20일 / 4계절 1사이클 = 80일)
                 </span>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  {currentYear >= 2
-                    ? '🎉 2년차 마스터 작물이 전면 해금되었습니다! 높은 수확량과 막대한 수익을 누려보세요.'
-                    : '사계절 1사이클(봄·여름·가을·겨울)을 완주하여 2년차에 돌입하면, 오래 걸리지만 막대한 수익과 높은 수확량을 자랑하는 [마스터 작물]이 개방됩니다.'}
+                  {currentYear >= 3
+                    ? '🎉 3사이클을 완주하여 전설적인 [마스터 작물]이 전면 개방되었습니다! 최고의 수확량과 높은 수익을 누려보세요.'
+                    : `사계절 3사이클을 완주하여 3년차에 돌입하면, 숨겨져 있던 명품 [마스터 작물]들이 상점에 모습을 드러냅니다! (현재 진행도: ${currentYear}/3 사이클)`}
                 </p>
               </div>
             </div>
@@ -224,19 +224,12 @@ export const ShopUpgrades: React.FC = () => {
             농장 자동화 기기, 로컬푸드 마트 확장 매대 및 가공실 설비를 업그레이드하세요.
           </div>
 
-          <div className="rounded-2xl border border-cyan-600/40 bg-gradient-to-r from-cyan-950/60 to-slate-900 p-5 shadow-lg">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-xl bg-cyan-700/70 flex items-center justify-center"><Anchor className="w-6 h-6 text-cyan-100" /></div><div><h3 className="text-sm font-bold text-white">늘봄 연못 낚시 장비</h3><p className="text-xs text-cyan-100/65 mt-1">낚싯대와 미끼를 준비해 물고기·조개를 낚고 식당 재료로 활용하세요.</p></div></div>
-              <div className="flex flex-wrap gap-2"><button disabled={fishing.hasRod || player.gold < FISHING_ROD_PRICE} onClick={buyFishingRod} className="rounded-xl bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 disabled:text-slate-500 px-3 py-2 text-xs font-bold text-white transition-all">{fishing.hasRod ? '낚싯대 보유 중' : `낚싯대 ₩${FISHING_ROD_PRICE.toLocaleString()}`}</button><button disabled={player.gold < BAIT_PRICE} onClick={() => buyBait(1)} className="rounded-xl bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 px-3 py-2 text-xs font-bold text-white transition-all">미끼 1개 ₩{BAIT_PRICE.toLocaleString()}</button><button disabled={player.gold < BAIT_PRICE * 10} onClick={() => buyBait(10)} className="rounded-xl bg-cyan-800 hover:bg-cyan-700 disabled:bg-slate-800 disabled:text-slate-500 px-3 py-2 text-xs font-bold text-white transition-all">미끼 10개 ₩{(BAIT_PRICE * 10).toLocaleString()}</button></div>
-            </div>
-            <div className="mt-3 text-[11px] text-cyan-200/80">현재 보유: 낚싯대 {fishing.hasRod ? '1개' : '0개'} · 미끼 {fishing.baitCount}개</div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {upgrades.map(up => {
               const isMax = up.level >= up.maxLevel
               const canAfford = player.gold >= up.cost && !isMax
               const autoPlanterRange = up.id === 'up_auto_planter' && up.level > 0 ? `${up.level + 1}×${up.level + 1}` : null
+              const autoHarvesterRange = up.id === 'up_auto_harvester' && up.level > 0 ? `${up.level + 1}×${up.level + 1}` : null
 
               return (
                 <div
@@ -272,6 +265,11 @@ export const ShopUpgrades: React.FC = () => {
                       {autoPlanterRange && (
                         <div className="text-[11px] text-cyan-300 font-bold mt-1">
                           현재 자동 파종 범위: {autoPlanterRange}
+                        </div>
+                      )}
+                      {autoHarvesterRange && (
+                        <div className="text-[11px] text-amber-300 font-bold mt-1">
+                          현재 일괄 수확 범위: {autoHarvesterRange}
                         </div>
                       )}
                       <div className="text-[11px] text-amber-300 font-bold mt-1.5 flex items-center space-x-1">

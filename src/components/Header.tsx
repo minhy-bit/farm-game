@@ -31,6 +31,7 @@ import {
   X,
   Check
 } from 'lucide-react'
+import { HoeGachaModal } from './HoeGachaModal'
 
 export const Header: React.FC = () => {
   const {
@@ -50,6 +51,7 @@ export const Header: React.FC = () => {
   const [muted, setMuted] = useState(SoundSystem.isMuted())
   const [bgmState, setBgmState] = useState(BgmSystem.getState())
   const [isBgmPopoverOpen, setIsBgmPopoverOpen] = useState(false)
+  const [isHoeGachaOpen, setIsHoeGachaOpen] = useState(false)
   const bgmPopoverRef = useRef<HTMLDivElement>(null)
 
   // BGM 상태 구독
@@ -170,10 +172,20 @@ export const Header: React.FC = () => {
             <span>₩{player.gold.toLocaleString()}</span>
           </div>
 
-          {/* 명성 / 평판 */}
-          <div className="flex items-center space-x-1 bg-[#2e2019]/80 px-2.5 py-1.5 rounded-md border-2 border-[#725034] text-xs text-sky-300">
-            <Award className="w-4 h-4 text-sky-400" />
-            <span className="font-semibold">{player.reputation}P</span>
+          {/* 명성 / 평판 & 뽑기 버튼 */}
+          <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1 bg-[#2e2019]/80 px-2.5 py-1.5 rounded-md border-2 border-[#725034] text-xs text-sky-300">
+              <Award className="w-4 h-4 text-sky-400" />
+              <span className="font-semibold">{player.reputation}P</span>
+            </div>
+            <button
+              onClick={() => setIsHoeGachaOpen(true)}
+              className="pixel-button flex items-center space-x-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold px-2.5 py-1.5 transition-all shadow-sm ring-1 ring-amber-400/40"
+              title="명성(평판)을 소모하여 마우스를 따라다니는 스페셜 호미 스킨을 뽑습니다"
+            >
+              <span>🎁</span>
+              <span>호미 뽑기</span>
+            </button>
           </div>
 
           {/* 다음 날 취침 버튼 */}
@@ -501,6 +513,9 @@ export const Header: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* 명성 호미 뽑기 & 도감 모달 */}
+      <HoeGachaModal isOpen={isHoeGachaOpen} onClose={() => setIsHoeGachaOpen(false)} />
     </header>
   )
 }
