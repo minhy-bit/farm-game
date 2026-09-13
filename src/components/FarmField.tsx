@@ -36,12 +36,15 @@ export const FarmField: React.FC = () => {
     { id: 'hoe', name: '호미', icon: <Shovel className="w-5 h-5 text-amber-500" />, desc: '거친 땅을 일궈 밭고랑을 만듭니다.' },
     { id: 'wateringCan', name: '물뿌리개', icon: <Droplets className="w-5 h-5 text-sky-400" />, desc: '씨앗이 자라도록 촉촉하게 물을 줍니다.' },
     { id: 'hand', name: '씨앗 파종', icon: <Hand className="w-5 h-5 text-emerald-400" />, desc: '일군 밭에 씨앗을 정성껏 심습니다.' },
-    { id: 'sickle', name: '수확 낫', icon: <Scissors className="w-5 h-5 text-rose-400" />, desc: '완숙된 영양 만점 작물을 베어 수확합니다.' }
+    { id: 'sickle', name: '수확 낫', icon: <Scissors className="w-5 h-5 text-rose-400" />, desc: '완숙된 영양 만점 작물을 베어 수확합니다.' },
+    { id: 'autoPlanter', name: '자동 파종', icon: <span className="text-base">🤖</span>, desc: '밭을 클릭한 칸을 시작점으로 오른쪽·아래 방향에 자동 파종합니다.' }
   ]
 
   const hasSprinkler = upgrades.find(u => u.id === 'up_sprinkler')?.level || 0
   const hasGreenhouse = upgrades.find(u => u.id === 'up_greenhouse')?.level || 0
   const hasAutoTill = (upgrades.find(u => u.id === 'up_auto_till')?.level || 0) > 0
+  const autoPlanterLevel = upgrades.find(u => u.id === 'up_auto_planter')?.level || 0
+  const autoPlantingSize = Math.min(autoPlanterLevel + 1, gridSize)
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in">
@@ -69,6 +72,11 @@ export const FarmField: React.FC = () => {
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-900/80 text-emerald-300 border border-emerald-500/60 shadow-sm flex items-center space-x-1">
               <span>🚜</span>
               <span>무경운 직파 가동중</span>
+            </span>
+          )}
+          {autoPlanterLevel > 0 && selectedTool === 'autoPlanter' && (
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-cyan-950/80 text-cyan-300 border border-cyan-500/60 shadow-sm">
+              🤖 클릭한 칸부터 {autoPlantingSize}×{autoPlantingSize} 자동 파종
             </span>
           )}
         </div>

@@ -16,7 +16,7 @@ export const CROPS: CropDef[] = [
     color: '#ef4444',
     canProcess: true,
     processedName: '수제 설향딸기청',
-    processedPrice: 7200
+    processedPrice: 4320
   },
   {
     id: 'crop_potato',
@@ -76,7 +76,7 @@ export const CROPS: CropDef[] = [
     color: '#dc2626',
     canProcess: true,
     processedName: '유기농 토마토 퓨레',
-    processedPrice: 6200
+    processedPrice: 3720
   },
   {
     id: 'crop_corn',
@@ -97,8 +97,8 @@ export const CROPS: CropDef[] = [
     nameKr: '꿀수박',
     category: 'fruit',
     season: ['summer'],
-    seedPrice: 1500,
-    basePrice: 5800,
+    seedPrice: 900,
+    basePrice: 3480,
     growthDays: 4,
     stages: 4,
     description: '무더위를 날려주는 시원하고 달콤한 명품 수박. 높은 판매가를 자랑합니다.',
@@ -106,7 +106,7 @@ export const CROPS: CropDef[] = [
     color: '#15803d',
     canProcess: true,
     processedName: '시원한 땡모반 수박주스',
-    processedPrice: 12000
+    processedPrice: 7200
   },
   {
     id: 'crop_chili',
@@ -122,7 +122,7 @@ export const CROPS: CropDef[] = [
     color: '#b91c1c',
     canProcess: true,
     processedName: '명품 태양초 고춧가루',
-    processedPrice: 5200
+    processedPrice: 3120
   },
 
   // --- 가을 작물 ---
@@ -131,8 +131,8 @@ export const CROPS: CropDef[] = [
     nameKr: '황금사과',
     category: 'fruit',
     season: ['autumn'],
-    seedPrice: 1200,
-    basePrice: 3800,
+    seedPrice: 720,
+    basePrice: 2280,
     growthDays: 3,
     stages: 4,
     description: '가을 햇살을 듬뿍 머금은 명품 사과. 착즙기로 프리미엄 사과즙을 생산할 수 있습니다.',
@@ -140,7 +140,7 @@ export const CROPS: CropDef[] = [
     color: '#e11d48',
     canProcess: true,
     processedName: '100% 순수 착즙 사과즙',
-    processedPrice: 9500
+    processedPrice: 5700
   },
   {
     id: 'crop_sweet_potato',
@@ -156,7 +156,7 @@ export const CROPS: CropDef[] = [
     color: '#9333ea',
     canProcess: true,
     processedName: '달콤 쫀득 고구마말랭이',
-    processedPrice: 6800
+    processedPrice: 4080
   },
   {
     id: 'crop_pumpkin',
@@ -193,8 +193,8 @@ export const CROPS: CropDef[] = [
     nameKr: '파프리카',
     category: 'vegetable',
     season: ['winter', 'spring'],
-    seedPrice: 1100,
-    basePrice: 3700,
+    seedPrice: 660,
+    basePrice: 2220,
     growthDays: 3,
     stages: 4,
     description: '스마트 온실에서 알록달록 재배되는 파프리카. 아삭한 단맛이 특징.',
@@ -207,8 +207,8 @@ export const CROPS: CropDef[] = [
     nameKr: '표고버섯',
     category: 'special',
     season: ['winter', 'autumn'],
-    seedPrice: 1300,
-    basePrice: 4200,
+    seedPrice: 780,
+    basePrice: 2520,
     growthDays: 3,
     stages: 4,
     description: '참나무 원목에서 자라난 깊은 향의 표고버섯. 고급 셰프들이 찾는 귀한 식재료.',
@@ -216,7 +216,7 @@ export const CROPS: CropDef[] = [
     color: '#78350f',
     canProcess: true,
     processedName: '자연건조 특등 표고버섯채',
-    processedPrice: 11000
+    processedPrice: 6600
   },
 
   // ==========================================
@@ -229,8 +229,8 @@ export const CROPS: CropDef[] = [
     nameKr: '명품 금향딸기',
     category: 'fruit',
     season: ['spring'],
-    seedPrice: 2800,
-    basePrice: 7500,
+    seedPrice: 1680,
+    basePrice: 4500,
     growthDays: 5,
     stages: 4,
     yieldCount: 4,
@@ -241,15 +241,15 @@ export const CROPS: CropDef[] = [
     color: '#f43f5e',
     canProcess: true,
     processedName: '특제 금향딸기 콩포트',
-    processedPrice: 18000
+    processedPrice: 10800
   },
   {
     id: 'crop_angelica',
     nameKr: '지리산 햇두릅',
     category: 'vegetable',
     season: ['spring'],
-    seedPrice: 3200,
-    basePrice: 9200,
+    seedPrice: 1920,
+    basePrice: 5520,
     growthDays: 6,
     stages: 4,
     yieldCount: 3,
@@ -267,8 +267,8 @@ export const CROPS: CropDef[] = [
     nameKr: '제주 애플망고',
     category: 'fruit',
     season: ['summer'],
-    seedPrice: 4500,
-    basePrice: 13500,
+    seedPrice: 2700,
+    basePrice: 8100,
     growthDays: 6,
     stages: 4,
     yieldCount: 3,
@@ -279,15 +279,15 @@ export const CROPS: CropDef[] = [
     color: '#f97316',
     canProcess: true,
     processedName: '애플망고 프리미엄 젤라또',
-    processedPrice: 29000
+    processedPrice: 17400
   },
   {
     id: 'crop_shine_muscat',
     nameKr: '샤인머스캣 포도',
     category: 'fruit',
     season: ['summer', 'autumn'],
-    seedPrice: 5200,
-    basePrice: 15500,
+    seedPrice: 3120,
+    basePrice: 9300,
     growthDays: 7,
     stages: 4,
     yieldCount: 4,
@@ -298,7 +298,7 @@ export const CROPS: CropDef[] = [
     color: '#84cc16',
     canProcess: true,
     processedName: '샤인머스캣 스파클링 에이드',
-    processedPrice: 34000
+    processedPrice: 20400
   },
 
   // [2년차 가을 마스터 작물]
@@ -307,8 +307,8 @@ export const CROPS: CropDef[] = [
     nameKr: '6년근 고려홍삼',
     category: 'special',
     season: ['autumn'],
-    seedPrice: 7500,
-    basePrice: 24000,
+    seedPrice: 4500,
+    basePrice: 14400,
     growthDays: 8,
     stages: 4,
     yieldCount: 3,
@@ -319,15 +319,15 @@ export const CROPS: CropDef[] = [
     color: '#854d0e',
     canProcess: true,
     processedName: '진한 고려홍삼 농축액',
-    processedPrice: 58000
+    processedPrice: 34800
   },
   {
     id: 'crop_jujube',
     nameKr: '보은 명품 왕대추',
     category: 'fruit',
     season: ['autumn'],
-    seedPrice: 2600,
-    basePrice: 7800,
+    seedPrice: 1560,
+    basePrice: 4680,
     growthDays: 5,
     stages: 4,
     yieldCount: 4,
@@ -345,8 +345,8 @@ export const CROPS: CropDef[] = [
     nameKr: '설국 자연산 송이버섯',
     category: 'special',
     season: ['winter'],
-    seedPrice: 6500,
-    basePrice: 19500,
+    seedPrice: 3900,
+    basePrice: 11700,
     growthDays: 7,
     stages: 4,
     yieldCount: 3,
@@ -357,15 +357,15 @@ export const CROPS: CropDef[] = [
     color: '#713f12',
     canProcess: true,
     processedName: '황금 송이버섯 건채',
-    processedPrice: 45000
+    processedPrice: 27000
   },
   {
     id: 'crop_hallabong',
     nameKr: '제주 명품 한라봉',
     category: 'fruit',
     season: ['winter'],
-    seedPrice: 3800,
-    basePrice: 11000,
+    seedPrice: 2280,
+    basePrice: 6600,
     growthDays: 6,
     stages: 4,
     yieldCount: 4,
@@ -376,7 +376,7 @@ export const CROPS: CropDef[] = [
     color: '#ea580c',
     canProcess: true,
     processedName: '달콤 한라봉 마멀레이드',
-    processedPrice: 25000
+    processedPrice: 15000
   }
 ]
 

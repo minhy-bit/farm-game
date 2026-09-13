@@ -47,6 +47,17 @@ export const UPGRADES: UpgradeItem[] = [
     bonusText: '수확 후 밭 보존 & 호미질 없이 즉시 파종'
   },
   {
+    id: 'up_auto_planter',
+    category: 'farm',
+    name: '스마트 자동 파종기',
+    desc: '선택한 씨앗을 지정 범위의 빈 땅에 자동으로 파종합니다. 단계가 오를수록 파종 범위가 넓어집니다. (Lv.1 2×2 → Lv.4 5×5)',
+    cost: 18000,
+    level: 0,
+    maxLevel: 4,
+    icon: '🤖',
+    bonusText: '자동 파종 범위 2×2 ~ 5×5'
+  },
+  {
     id: 'up_fertile_soil',
     category: 'farm',
     name: '친환경 유용미생물(EM) 비옥토',

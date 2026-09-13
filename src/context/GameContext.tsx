@@ -14,6 +14,7 @@ import {
   TabType,
   CookingUtensilType,
   RestaurantState,
+  FishingState,
   DAYS_PER_SEASON,
   DAYS_PER_CYCLE,
   SOIL_DECAY_RATE,
@@ -21,11 +22,13 @@ import {
   MAX_WATER_PER_DAY
 } from '../types/game'
 import { CROPS, CROPS_MAP } from '../data/crops'
+import { RESTAURANT_UNLOCK_CONTRACTS } from '../data/gameBalance'
 import { INITIAL_CONTRACTS, refreshContractsForSeason, generateRandomContract } from '../data/contracts'
 import { UPGRADES } from '../data/upgrades'
 import { CUSTOMER_PRESETS, CUSTOMER_BUBBLES } from '../data/customers'
 import { UTENSILS_MAP } from '../data/cookingUtensils'
 import { RECIPES_MAP } from '../data/recipes'
+import { BAIT_PRICE, FISHING_CATCHES, FISHING_CATCHES_MAP, FISHING_ROD_PRICE, FISHING_STAMINA_COST } from '../data/fishing'
 import { SoundSystem } from '../utils/audio'
 import { UserProfile, SaveGamePayload } from '../types/auth'
 import {
@@ -59,6 +62,7 @@ interface GameContextType {
   toasts: NotificationToast[]
   gridSize: number // 3, 4, or 5
   restaurant: RestaurantState
+  fishing: FishingState
   currentYear: number
   currentSeasonDay: number
   
@@ -101,6 +105,10 @@ interface GameContextType {
   // Shop & Upgrades
   buySeeds: (cropId: string, count: number) => boolean
   buyUpgrade: (upgradeId: string) => boolean
+  autoPlantSeeds: (cropId: string, anchorTileId?: string) => boolean
+  buyFishingRod: () => boolean
+  buyBait: (count: number) => boolean
+  fish: () => boolean
   
   // Processing
   processCrop: (cropId: string, count: number) => boolean
@@ -148,6 +156,19 @@ function createInitialTiles(size: number): FarmTile[] {
     }
   }
   return tiles
+}
+
+// 저장 당시 존재하지 않았던 신규 시설도 기본 레벨로 함께 복원한다.
+function mergeSavedUpgrades(savedUpgrades: UpgradeItem[]): UpgradeItem[] {
+  return UPGRADES.map(defaultUpgrade => {
+    const savedUpgrade = savedUpgrades.find(upgrade => upgrade.id === defaultUpgrade.id)
+    if (!savedUpgrade) return defaultUpgrade
+    return {
+      ...defaultUpgrade,
+      level: Math.min(savedUpgrade.level, defaultUpgrade.maxLevel),
+      cost: savedUpgrade.cost
+    }
+  })
 }
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -240,6 +261,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 7. 업그레이드 현황
   const [upgrades, setUpgrades] = useState<UpgradeItem[]>(UPGRADES)
 
+  // 실행 중인 기존 세이브에도 새로 추가된 시설을 즉시 반영한다.
+  useEffect(() => {
+    setUpgrades(previousUpgrades => mergeSavedUpgrades(previousUpgrades))
+  }, [])
+
   // 8. 뷰 및 조작 모드
   const [activeTab, setActiveTab] = useState<TabType>('farm')
   const [selectedTool, setSelectedTool] = useState<ToolType>('hoe')
@@ -252,6 +278,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     totalDishesServed: 0,
     unlockedUtensils: ['pot'], // 가마솥/뚝배기 기본 구비
     cookedInventory: []
+  })
+
+  const [fishing, setFishing] = useState<FishingState>({
+    hasRod: false,
+    baitCount: 0,
+    totalCatches: 0,
+    lastCatchId: null
   })
 
   // 10. 계정 및 저장 상태
@@ -296,6 +329,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         contracts,
         upgrades,
         restaurant,
+        fishing,
         gridSize
       }
 
@@ -310,7 +344,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return ok
     },
-    [currentUser, player, tiles, inventory, shelves, contracts, upgrades, restaurant, gridSize, showToast]
+    [currentUser, player, tiles, inventory, shelves, contracts, upgrades, restaurant, fishing, gridSize, showToast]
   )
 
   const registerUser = useCallback(
@@ -372,6 +406,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unlockedUtensils: ['pot'],
         cookedInventory: []
       }
+      const initFishing: FishingState = { hasRod: false, baitCount: 0, totalCatches: 0, lastCatchId: null }
 
       setPlayer(initPlayer)
       setTiles(initTiles)
@@ -380,6 +415,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setContracts(initContracts)
       setUpgrades(initUpgrades)
       setRestaurant(initRestaurant)
+      setFishing(initFishing)
       setGridSize(3)
 
       writeStoredSave({
@@ -393,6 +429,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         contracts: initContracts,
         upgrades: initUpgrades,
         restaurant: initRestaurant,
+        fishing: initFishing,
         gridSize: 3
       })
 
@@ -429,8 +466,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (save.inventory) setInventory(save.inventory)
       if (save.shelves) setShelves(save.shelves)
       if (save.contracts) setContracts(save.contracts)
-      if (save.upgrades) setUpgrades(save.upgrades)
+      if (save.upgrades) setUpgrades(mergeSavedUpgrades(save.upgrades))
       if (save.restaurant) setRestaurant(save.restaurant)
+      if (save.fishing) setFishing(save.fishing)
       if (save.gridSize) setGridSize(save.gridSize)
 
       SoundSystem.playFanfare()
@@ -472,8 +510,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (save.inventory) setInventory(save.inventory)
         if (save.shelves) setShelves(save.shelves)
         if (save.contracts) setContracts(save.contracts)
-        if (save.upgrades) setUpgrades(save.upgrades)
+        if (save.upgrades) setUpgrades(mergeSavedUpgrades(save.upgrades))
         if (save.restaurant) setRestaurant(save.restaurant)
+        if (save.fishing) setFishing(save.fishing)
         if (save.gridSize) setGridSize(save.gridSize)
         showToast(`🌾 [${lastUser}] 농부님의 저장된 농장을 자동으로 불러왔습니다!`, 'success')
         return
@@ -656,6 +695,64 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true
   }, [inventory, hasUpgrade, player.season, player.stamina, tiles, showToast])
 
+  const autoPlantSeeds = useCallback((cropId: string, anchorTileId?: string): boolean => {
+    const planterLevel = upgrades.find(upgrade => upgrade.id === 'up_auto_planter')?.level || 0
+    if (planterLevel < 1) {
+      showToast('시설 확충에서 스마트 자동 파종기를 먼저 구매하세요!', 'warning')
+      return false
+    }
+    const cropDef = CROPS_MAP.get(cropId)
+    if (!cropDef) return false
+    if (!hasUpgrade('up_greenhouse') && !cropDef.season.includes(player.season)) {
+      showToast(`[${cropDef.nameKr}]은(는) 현재 계절에 자동 파종할 수 없습니다.`, 'warning')
+      return false
+    }
+
+    const availableSeeds = inventory
+      .filter(item => item.type === 'seed' && item.targetId === cropId)
+      .reduce((sum, item) => sum + item.count, 0)
+    const anchorTile = anchorTileId ? tiles.find(tile => tile.id === anchorTileId) : undefined
+    const plantingSize = Math.min(planterLevel + 1, gridSize)
+    // 클릭 타일을 포함하되 밭 경계를 넘지 않도록 시작점을 안쪽으로 보정한다.
+    // 따라서 5×5 단계에서 가장자리 타일을 눌러도 항상 5×5 범위를 유지한다.
+    const anchorX = anchorTile ? Math.max(0, Math.min(anchorTile.x, gridSize - plantingSize)) : 0
+    const anchorY = anchorTile ? Math.max(0, Math.min(anchorTile.y, gridSize - plantingSize)) : 0
+    const availableTiles = tiles.filter(tile => {
+      const inRange = anchorTile
+        ? tile.x >= anchorX && tile.x < anchorX + plantingSize && tile.y >= anchorY && tile.y < anchorY + plantingSize
+        : tile.x < plantingSize && tile.y < plantingSize
+      return inRange && !tile.cropId
+    })
+    const plantingCount = Math.min(availableSeeds, availableTiles.length)
+    if (plantingCount < 1) {
+      showToast(availableSeeds < 1 ? '자동 파종에 사용할 씨앗이 없습니다.' : '자동 파종 범위에 빈 밭이 없습니다.', 'warning')
+      return false
+    }
+
+    const plantingTileIds = new Set(availableTiles.slice(0, plantingCount).map(tile => tile.id))
+    setTiles(prev => prev.map(tile => plantingTileIds.has(tile.id) ? {
+      ...tile,
+      isTilled: true,
+      cropId,
+      currentStage: 0,
+      daysGrown: 0,
+      waterCount: tile.isWatered ? 1 : 0,
+      quality: 'normal'
+    } : tile))
+    setInventory(prev => {
+      let remaining = plantingCount
+      return prev.map(item => {
+        if (item.type !== 'seed' || item.targetId !== cropId || remaining === 0) return item
+        const used = Math.min(item.count, remaining)
+        remaining -= used
+        return { ...item, count: item.count - used }
+      }).filter(item => item.count > 0)
+    })
+    SoundSystem.playPlant()
+    showToast(`🤖 자동 파종기가 ${plantingSize}×${plantingSize} 범위에 ${cropDef.nameKr} ${plantingCount}포를 심었습니다!`, 'success')
+    return true
+  }, [gridSize, hasUpgrade, inventory, player.season, tiles, upgrades, showToast])
+
   const harvestCrop = useCallback((tileId: string): boolean => {
     const target = tiles.find(t => t.id === tileId)
     if (!target || !target.cropId || target.currentStage < 3) return false
@@ -751,6 +848,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return
     }
 
+    if (selectedTool === 'autoPlanter') {
+      if (selectedSeed) {
+        autoPlantSeeds(selectedSeed, tileId)
+      } else {
+        showToast('자동 파종할 씨앗을 먼저 선택해주세요!', 'warning')
+      }
+      return
+    }
+
     // 2. 선택된 도구에 따른 동작
     if (selectedTool === 'hoe') {
       if (!tile.isTilled) {
@@ -782,7 +888,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast('아직 완전히 영글지 않았습니다. 정성을 들여 키워주세요.', 'info')
       }
     }
-  }, [tiles, selectedTool, selectedSeed, hasUpgrade, harvestCrop, tillTile, waterTile, plantSeed, showToast])
+  }, [tiles, selectedTool, selectedSeed, hasUpgrade, harvestCrop, tillTile, waterTile, plantSeed, autoPlantSeeds, showToast])
 
   // --- 날짜 및 시간 넘기기 ---
   const sleepNextDay = useCallback(() => {
@@ -1019,7 +1125,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const cropDef = CROPS_MAP.get(targetId)
-    const basePrice = cropDef ? cropDef.basePrice : 2000
+    const basePrice = matchingItems[0]?.unitPrice || cropDef?.basePrice || 2000
     const primaryQuality = matchingItems[0]?.quality || 'normal'
     const displayName = matchingItems[0]?.name || cropDef?.nameKr || '농산물'
 
@@ -1124,7 +1230,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const martTimer = setInterval(() => {
       // 영업 시간 (오전 8시 ~ 밤 9시) 및 재고 확인
       const stockedShelves = shelves.filter(s => s.cropId && s.stock > 0)
-      if (stockedShelves.length === 0) return
+      // 기준가의 10% 이상으로 가격을 올린 상품은 손님이 구매하지 않습니다.
+      const purchasableShelves = stockedShelves.filter(shelf => shelf.price < shelf.basePrice * 1.1)
+      if (purchasableShelves.length === 0) return
 
       // 현재 매장에 손님이 4명 이하일 때만 추가
       setCustomers(prev => {
@@ -1134,17 +1242,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newCustId = `cust_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
 
         // 진열대 중 손님이 선호하거나 아무 재고 있는 매대 선택
-        const targetShelf = stockedShelves[Math.floor(Math.random() * stockedShelves.length)]
+        const targetShelf = purchasableShelves[Math.floor(Math.random() * purchasableShelves.length)]
         const cropDef = CROPS_MAP.get(targetShelf.cropId!)
 
         // 1~2개 구매
         const buyCount = Math.min(targetShelf.stock, Math.floor(Math.random() * 2) + 1)
         const unitPrice = targetShelf.price > 0 ? targetShelf.price : (cropDef?.basePrice || 2000)
 
-        // 매대 재고 차감
+        // 손님이 장바구니에 담는 순간 재고를 확보하고, 가격에 따라 계산대로 오는 시간이 달라집니다.
         setShelves(sList =>
           sList.map(s => (s.id === targetShelf.id ? { ...s, stock: Math.max(0, s.stock - buyCount) } : s))
         )
+
+        const priceRatio = targetShelf.price / targetShelf.basePrice
+        const purchaseDelay = Math.round(1200 + priceRatio * 3000)
 
         const newCustomer: Customer = {
           id: newCustId,
@@ -1153,8 +1264,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           avatar: preset.avatar,
           preferredCategories: preset.preferredCategories,
           budget: preset.budget,
-          state: 'queued', // 장바구니 담고 바로 계산 대기로
-          bubble: `${cropDef?.nameKr || '작물'} ${buyCount}개 샀어요! 계산해주세요~`,
+          state: 'browsing',
+          bubble: `${cropDef?.nameKr || '작물'} ${buyCount}개, 가격을 살펴보는 중이에요.`,
           cart: [
             {
               cropId: targetShelf.cropId!,
@@ -1164,6 +1275,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           ]
         }
+
+        setTimeout(() => {
+          setCustomers(currentCustomers => currentCustomers.map(customer =>
+            customer.id === newCustId && customer.state === 'browsing'
+              ? { ...customer, state: 'queued', bubble: `${cropDef?.nameKr || '작물'} ${buyCount}개 샀어요! 계산해주세요~` }
+              : customer
+          ))
+        }, purchaseDelay)
 
         return [...prev, newCustomer]
       })
@@ -1240,11 +1359,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'success'
     )
 
-    // 3회 달성 시 식당 해금 축하 알림
-    if (nextFulfilled === 3) {
+    // 식당 해금 발주 횟수 달성 시 축하 알림
+    if (nextFulfilled === RESTAURANT_UNLOCK_CONTRACTS) {
       setTimeout(() => {
         SoundSystem.playFanfare()
-        showToast('🎉 B2B 납품 3회 달성! [늘봄 식당] 부지 매입 및 요리 시스템이 해금되었습니다! 상단 탭을 확인하세요.', 'success')
+        showToast(`🎉 B2B 납품 ${RESTAURANT_UNLOCK_CONTRACTS}회 달성! [늘봄 식당] 부지 매입 및 요리 시스템이 해금되었습니다! 상단 탭을 확인하세요.`, 'success')
       }, 1000)
     }
 
@@ -1363,8 +1482,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .filter(i => i.type === 'crop' && i.targetId === ing.cropId)
         .reduce((sum, i) => sum + i.count, 0)
       const cropDef = CROPS_MAP.get(ing.cropId)
+      const catchDef = FISHING_CATCHES_MAP.get(ing.cropId)
       if (totalOwned < ing.count) {
-        showToast(`재료가 부족합니다! (${cropDef?.nameKr || '작물'} ${ing.count}개 필요, 보유: ${totalOwned}개)`, 'warning')
+        showToast(`재료가 부족합니다! (${cropDef?.nameKr || catchDef?.name || '작물'} ${ing.count}개 필요, 보유: ${totalOwned}개)`, 'warning')
         return false
       }
     }
@@ -1513,6 +1633,70 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true
   }, [restaurant.cookedInventory, showToast])
 
+
+  // --- 낚시 장비 및 어획 ---
+  const buyFishingRod = useCallback((): boolean => {
+    if (fishing.hasRod) {
+      showToast('이미 튼튼한 낚싯대를 보유하고 있습니다.', 'info')
+      return false
+    }
+    if (player.gold < FISHING_ROD_PRICE) {
+      showToast(`골드가 부족합니다! (낚싯대 ₩${FISHING_ROD_PRICE.toLocaleString()} 필요)`, 'warning')
+      return false
+    }
+    setPlayer(prev => ({ ...prev, gold: prev.gold - FISHING_ROD_PRICE }))
+    setFishing(prev => ({ ...prev, hasRod: true }))
+    SoundSystem.playFanfare()
+    showToast('🎣 튼튼한 대나무 낚싯대를 구매했습니다! 이제 연못에서 낚시할 수 있습니다.', 'success')
+    return true
+  }, [fishing.hasRod, player.gold, showToast])
+
+  const buyBait = useCallback((count: number): boolean => {
+    if (!Number.isInteger(count) || count < 1) return false
+    const totalCost = BAIT_PRICE * count
+    if (player.gold < totalCost) {
+      showToast(`골드가 부족합니다! (미끼 ${count}개 ₩${totalCost.toLocaleString()} 필요)`, 'warning')
+      return false
+    }
+    setPlayer(prev => ({ ...prev, gold: prev.gold - totalCost }))
+    setFishing(prev => ({ ...prev, baitCount: prev.baitCount + count }))
+    SoundSystem.playCoin()
+    showToast(`🪱 낚시 미끼 ${count}개를 구매했습니다.`, 'success')
+    return true
+  }, [player.gold, showToast])
+
+  const fish = useCallback((): boolean => {
+    if (!fishing.hasRod) {
+      showToast('먼저 상점에서 낚싯대를 구매하세요!', 'warning')
+      return false
+    }
+    if (fishing.baitCount < 1) {
+      showToast('미끼가 없습니다. 상점에서 미끼를 준비하세요!', 'warning')
+      return false
+    }
+    if (player.stamina < FISHING_STAMINA_COST) {
+      showToast(`기력이 부족합니다! (낚시 1회당 기력 ${FISHING_STAMINA_COST} 소모)`, 'warning')
+      return false
+    }
+
+    const totalWeight = FISHING_CATCHES.reduce((sum, catchItem) => sum + catchItem.weight, 0)
+    let roll = Math.random() * totalWeight
+    const caught = FISHING_CATCHES.find(catchItem => {
+      roll -= catchItem.weight
+      return roll <= 0
+    }) || FISHING_CATCHES[0]
+
+    setFishing(prev => ({ ...prev, baitCount: prev.baitCount - 1, totalCatches: prev.totalCatches + 1, lastCatchId: caught.id }))
+    setPlayer(prev => ({ ...prev, stamina: Math.max(0, prev.stamina - FISHING_STAMINA_COST) }))
+    setInventory(prev => {
+      const existing = prev.find(item => item.type === 'crop' && item.targetId === caught.id)
+      if (existing) return prev.map(item => item.id === existing.id ? { ...item, count: item.count + 1 } : item)
+      return [...prev, { id: `inv_catch_${caught.id}_${Date.now()}`, type: 'crop', targetId: caught.id, name: `${caught.icon} ${caught.name}`, count: 1, quality: 'normal', unitPrice: caught.unitPrice }]
+    })
+    SoundSystem.playHarvest()
+    showToast(`🎣 입질 성공! [${caught.name}]을 낚았습니다. 식당 요리 재료로 사용할 수 있습니다!`, 'success')
+    return true
+  }, [fishing.hasRod, fishing.baitCount, player.stamina, showToast])
 
   // --- 종묘상 씨앗 구매 ---
   const buySeeds = useCallback((cropId: string, count: number): boolean => {
@@ -1804,6 +1988,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toasts,
       gridSize,
       restaurant,
+      fishing,
       currentYear,
       currentSeasonDay,
       setActiveTab,
@@ -1832,6 +2017,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       shipDishToMart,
       buySeeds,
       buyUpgrade,
+      autoPlantSeeds,
+      buyFishingRod,
+      buyBait,
+      fish,
       processCrop,
       addFunds,
       giveSeeds,
@@ -1863,6 +2052,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toasts,
       gridSize,
       restaurant,
+      fishing,
       currentYear,
       currentSeasonDay,
       handleTileClick,
@@ -1888,6 +2078,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       shipDishToMart,
       buySeeds,
       buyUpgrade,
+      autoPlantSeeds,
+      buyFishingRod,
+      buyBait,
+      fish,
       processCrop,
       addFunds,
       giveSeeds,

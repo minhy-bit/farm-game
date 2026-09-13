@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext'
 import { COOKING_UTENSILS } from '../data/cookingUtensils'
 import { RECIPES } from '../data/recipes'
 import { CROPS_MAP } from '../data/crops'
+import { FISHING_CATCHES_MAP } from '../data/fishing'
 import { CookingUtensilType } from '../types/game'
 import {
   UtensilsCrossed,
@@ -386,14 +387,15 @@ export const RestaurantView: React.FC = () => {
             let hasAllIngredients = true
             const ingredientStatuses = recipe.ingredients.map(ing => {
               const crop = CROPS_MAP.get(ing.cropId)
+              const catchItem = FISHING_CATCHES_MAP.get(ing.cropId)
               const owned = inventory
                 .filter(i => i.type === 'crop' && i.targetId === ing.cropId)
                 .reduce((sum, i) => sum + i.count, 0)
               const enough = owned >= ing.count
               if (!enough) hasAllIngredients = false
               return {
-                cropName: crop?.nameKr || '작물',
-                cropIcon: crop?.icon || '🌱',
+                cropName: crop?.nameKr || catchItem?.name || '작물',
+                cropIcon: crop?.icon || catchItem?.icon || '🌱',
                 required: ing.count,
                 owned,
                 enough

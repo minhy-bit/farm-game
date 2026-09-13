@@ -1,7 +1,7 @@
 import { TabType, CookingUtensilType } from '../types/game'
 
 export interface FarmGameControllerAPI {
-  getState: () => any
+  getState: () => unknown
   tillTile: (x: number, y: number) => boolean
   waterTile: (x: number, y: number) => boolean
   plantCrop: (x: number, y: number, cropId: string) => boolean
@@ -20,6 +20,10 @@ export interface FarmGameControllerAPI {
   eatDish?: (recipeId: string) => boolean
   buySeeds: (cropId: string, count: number) => boolean
   buyUpgrade: (upgradeId: string) => boolean
+  autoPlantSeeds?: (cropId: string, anchorTileId?: string) => boolean
+  buyFishingRod?: () => boolean
+  buyBait?: (count: number) => boolean
+  fish?: () => boolean
   processCrop: (cropId: string, count: number) => boolean
   switchTab: (tab: TabType) => void
   addFunds: (amount: number) => void
@@ -27,6 +31,12 @@ export interface FarmGameControllerAPI {
   giveCrops: (cropId: string, count: number) => void
   forceDecayTile?: (tileIndex?: number) => boolean
   forceRotCrop?: (tileIndex?: number) => boolean
+  playBgm?: (trackId?: string) => void
+  stopBgm?: () => void
+  toggleBgm?: () => boolean
+  setBgmVolume?: (volume: number) => void
+  setBgmTrack?: (trackId: string) => void
+  getBgmState?: () => unknown
 }
 
 declare global {

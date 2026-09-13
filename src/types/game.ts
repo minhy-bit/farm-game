@@ -10,7 +10,7 @@ export const MAX_WATER_PER_DAY = 5 // 하루에 물 5회 이상 주면 과습으
 
 export type Weather = 'sunny' | 'rainy' | 'cloudy' | 'rainbow'
 
-export type ToolType = 'hand' | 'hoe' | 'wateringCan' | 'sickle' | 'fertilizer'
+export type ToolType = 'hand' | 'hoe' | 'wateringCan' | 'sickle' | 'fertilizer' | 'autoPlanter'
 
 export type CropQuality = 'normal' | 'high' | 'supreme'
 
@@ -130,7 +130,14 @@ export interface PlayerStats {
   contractsFulfilled: number
 }
 
-export type TabType = 'farm' | 'mart' | 'wholesale' | 'processing' | 'shop' | 'restaurant'
+export type TabType = 'farm' | 'mart' | 'wholesale' | 'processing' | 'shop' | 'fishing' | 'restaurant'
+
+export interface FishingState {
+  hasRod: boolean
+  baitCount: number
+  totalCatches: number
+  lastCatchId: string | null
+}
 
 export type CookingUtensilType = 'pot' | 'pan' | 'steamer' | 'blender' | 'oven'
 

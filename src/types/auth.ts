@@ -1,3 +1,5 @@
+import { FishingState } from './game'
+
 export interface UserProfile {
   username: string
   passwordHash: string
@@ -24,4 +26,5 @@ export interface SaveGamePayload {
   upgrades: any[]
   restaurant: any
   gridSize: number
+  fishing?: FishingState
 }

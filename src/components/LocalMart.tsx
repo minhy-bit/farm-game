@@ -41,6 +41,9 @@ export const LocalMart: React.FC = () => {
 
   const hasSmartPos = upgrades.find(u => u.id === 'up_smart_pos')?.level || 0
   const hasColdShowcase = upgrades.find(u => u.id === 'up_cold_showcase')?.level || 0
+  const selectedItem = sellableItems.find(item => item.targetId === selectedItemTargetId)
+  const selectedBasePrice = selectedItem?.unitPrice || CROPS_MAP.get(selectedItemTargetId)?.basePrice || 0
+  const selectedPriceRatio = selectedBasePrice > 0 ? customPrice / selectedBasePrice : 1
 
   // 진열 모달 열기
   const handleOpenStockModal = (shelf: MartShelf) => {
@@ -170,6 +173,13 @@ export const LocalMart: React.FC = () => {
                           </div>
                           <div className="text-[11px] text-slate-400">
                             남은 재고: <strong className="text-teal-300 font-mono">{shelf.stock}개</strong>
+                          </div>
+                          <div className={`text-[10px] font-bold ${shelf.price >= shelf.basePrice * 1.1 ? 'text-rose-400' : shelf.price < shelf.basePrice ? 'text-emerald-400' : 'text-amber-300'}`}>
+                            {shelf.price >= shelf.basePrice * 1.1
+                              ? '가격이 기준가보다 10% 이상 높아 판매되지 않습니다'
+                              : shelf.price < shelf.basePrice
+                              ? '할인 특가: 손님이 더 빠르게 구매합니다'
+                              : '정가 근처: 일반 속도로 구매합니다'}
                           </div>
                         </div>
                       </>
@@ -396,8 +406,7 @@ export const LocalMart: React.FC = () => {
                     {/* 빠른 가격 프리셋 */}
                     <button
                       onClick={() => {
-                        const crop = CROPS_MAP.get(selectedItemTargetId)
-                        if (crop) setCustomPrice(Math.round(crop.basePrice * 0.8))
+                        if (selectedBasePrice) setCustomPrice(Math.round(selectedBasePrice * 0.8))
                       }}
                       className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs rounded-xl font-bold border border-slate-700"
                       title="20% 할인 특가 (빠른 회전)"
@@ -406,8 +415,7 @@ export const LocalMart: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        const crop = CROPS_MAP.get(selectedItemTargetId)
-                        if (crop) setCustomPrice(crop.basePrice)
+                        if (selectedBasePrice) setCustomPrice(selectedBasePrice)
                       }}
                       className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-xl font-bold border border-slate-700"
                       title="정가 판매"
@@ -416,8 +424,7 @@ export const LocalMart: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        const crop = CROPS_MAP.get(selectedItemTargetId)
-                        if (crop) setCustomPrice(Math.round(crop.basePrice * 1.25))
+                        if (selectedBasePrice) setCustomPrice(Math.round(selectedBasePrice * 1.25))
                       }}
                       className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs rounded-xl font-bold border border-slate-700"
                       title="프리미엄 고마진"
@@ -425,6 +432,11 @@ export const LocalMart: React.FC = () => {
                       +25%
                     </button>
                   </div>
+                  {selectedBasePrice > 0 && (
+                    <p className={`mt-2 text-[11px] font-medium ${selectedPriceRatio >= 1.1 ? 'text-rose-400' : selectedPriceRatio < 1 ? 'text-emerald-400' : 'text-amber-300'}`}>
+                      기준가 ₩{selectedBasePrice.toLocaleString()} 대비 {Math.round((selectedPriceRatio - 1) * 100)}% · {selectedPriceRatio >= 1.1 ? '10% 이상 할증: 손님이 구매하지 않습니다.' : selectedPriceRatio < 1 ? '할인 가격: 더 빠르게 구매합니다.' : '가격이 높을수록 구매까지 시간이 더 걸립니다.'}
+                    </p>
+                  )}
                 </div>
 
                 {/* 버튼 */}

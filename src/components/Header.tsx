@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useGame } from '../context/GameContext'
-import { SoundSystem } from '../utils/audio'
+import { SoundSystem, BgmSystem, BGM_TRACKS } from '../utils/audio'
 import { DAYS_PER_SEASON } from '../types/game'
+import { RESTAURANT_UNLOCK_CONTRACTS } from '../data/gameBalance'
 import {
   Sun,
   CloudRain,
@@ -19,10 +20,16 @@ import {
   Layers,
   ShoppingBag,
   UtensilsCrossed,
+  Anchor,
   Save,
   LogIn,
   LogOut,
-  User
+  User,
+  Music,
+  Play,
+  Pause,
+  X,
+  Check
 } from 'lucide-react'
 
 export const Header: React.FC = () => {
@@ -41,6 +48,35 @@ export const Header: React.FC = () => {
     logoutUser
   } = useGame()
   const [muted, setMuted] = useState(SoundSystem.isMuted())
+  const [bgmState, setBgmState] = useState(BgmSystem.getState())
+  const [isBgmPopoverOpen, setIsBgmPopoverOpen] = useState(false)
+  const bgmPopoverRef = useRef<HTMLDivElement>(null)
+
+  // BGM 상태 구독
+  useEffect(() => {
+    const unsubscribe = BgmSystem.subscribe(setBgmState)
+    return () => unsubscribe()
+  }, [])
+
+  // 계절 및 날씨 변경 시 BGM 분위기 자동 동기화
+  useEffect(() => {
+    BgmSystem.setSeasonWeather(player.season, player.weather)
+  }, [player.season, player.weather])
+
+  // 외부 클릭 시 BGM 팝오버 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (bgmPopoverRef.current && !bgmPopoverRef.current.contains(e.target as Node)) {
+        setIsBgmPopoverOpen(false)
+      }
+    }
+    if (isBgmPopoverOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isBgmPopoverOpen])
 
   const handleSoundToggle = () => {
     const isNowMuted = SoundSystem.toggleSound()
@@ -187,11 +223,161 @@ export const Header: React.FC = () => {
             </button>
           )}
 
-          {/* 사운드 온오프 */}
+          {/* 잔잔한 힐링 BGM 컨트롤러 */}
+          <div className="relative" ref={bgmPopoverRef}>
+            <button
+              onClick={() => setIsBgmPopoverOpen(prev => !prev)}
+              className={`pixel-button flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-bold transition-all ${
+                bgmState.isPlaying
+                  ? 'bg-[#1b432a] hover:bg-[#255837] text-emerald-200 border border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                  : 'bg-[#2e2019] hover:bg-[#5a3c29] text-slate-300'
+              }`}
+              title={
+                bgmState.isPlaying
+                  ? `배경음악 재생 중: ${bgmState.activeTrackInfo.title} (클릭하여 설정)`
+                  : '잔잔한 배경음악 켜기 / 설정'
+              }
+            >
+              <Music className={`w-3.5 h-3.5 ${bgmState.isPlaying ? 'text-emerald-400 animate-pulse' : 'text-slate-400'}`} />
+              <span className="hidden sm:inline text-[11px] font-mono">BGM</span>
+              {bgmState.isPlaying ? (
+                <div className="flex items-end space-x-0.5 h-3" title="재생 중">
+                  <span className="w-0.5 bg-emerald-400 rounded-full animate-pulse h-2"></span>
+                  <span className="w-0.5 bg-emerald-300 rounded-full animate-pulse h-3"></span>
+                  <span className="w-0.5 bg-emerald-400 rounded-full animate-pulse h-1.5"></span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-slate-500 hidden sm:inline">OFF</span>
+              )}
+            </button>
+
+            {/* BGM 상세 설정 팝오버 */}
+            {isBgmPopoverOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-[#251710] border-2 border-[#8d6238] rounded-lg shadow-2xl p-3.5 z-50 text-xs text-amber-100">
+                {/* 팝오버 헤더 */}
+                <div className="flex items-center justify-between pb-2 border-b border-[#5a3c29]">
+                  <div className="flex items-center space-x-2">
+                    <Music className="w-4 h-4 text-emerald-400" />
+                    <div>
+                      <h3 className="font-bold text-amber-200 text-sm">늘봄마을 잔잔한 BGM</h3>
+                      <p className="text-[10px] text-amber-100/60">실시간 무손실 힐링 선율</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsBgmPopoverOpen(false)}
+                    className="p-1 hover:bg-[#432918] rounded text-slate-400 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* 재생/일시정지 & 볼륨 컨트롤 바 */}
+                <div className="py-3 border-b border-[#5a3c29] flex flex-col space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => BgmSystem.toggle()}
+                      className={`pixel-button flex-1 py-1.5 px-3 rounded flex items-center justify-center space-x-2 font-bold text-xs transition-all ${
+                        bgmState.isPlaying
+                          ? 'bg-amber-700 hover:bg-amber-600 text-white'
+                          : 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                      }`}
+                    >
+                      {bgmState.isPlaying ? (
+                        <>
+                          <Pause className="w-3.5 h-3.5" />
+                          <span>일시정지</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5" />
+                          <span>배경음악 재생</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* 음량 조절 슬라이더 */}
+                  <div className="flex items-center space-x-2 bg-[#1d110b] p-2 rounded border border-[#4a2e1c]">
+                    <Volume2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={bgmState.volume}
+                      onChange={e => BgmSystem.setVolume(parseFloat(e.target.value))}
+                      className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg appearance-none"
+                    />
+                    <span className="text-[11px] font-mono text-amber-300 w-8 text-right">
+                      {Math.round(bgmState.volume * 100)}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* 트랙 선택 리스트 */}
+                <div className="pt-2">
+                  <div className="text-[11px] font-semibold text-amber-300/80 mb-1.5 flex items-center justify-between">
+                    <span>음악 선곡</span>
+                    {bgmState.isAutoMode && (
+                      <span className="text-[10px] text-emerald-400 bg-emerald-950/70 px-1.5 py-0.2 rounded border border-emerald-700/60">
+                        계절 맞춤 자동 모드
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col space-y-1 max-h-48 overflow-y-auto">
+                    {/* 자동 모드 버튼 */}
+                    <button
+                      onClick={() => BgmSystem.setTrack('auto')}
+                      className={`text-left px-2.5 py-2 rounded flex items-center justify-between transition-all ${
+                        bgmState.isAutoMode
+                          ? 'bg-emerald-900/60 border border-emerald-500/60 text-emerald-100'
+                          : 'bg-[#1e130d] hover:bg-[#342014] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[11px] flex items-center space-x-1">
+                          <span>✨ 계절 & 날씨 맞춤 자동 선곡</span>
+                        </span>
+                        <span className="text-[10px] text-amber-100/60">
+                          현재: {bgmState.activeTrackInfo.title} ({bgmState.activeTrackInfo.mood})
+                        </span>
+                      </div>
+                      {bgmState.isAutoMode && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                    </button>
+
+                    {/* 개별 트랙 목록 */}
+                    {BGM_TRACKS.map(track => {
+                      const isSelected = !bgmState.isAutoMode && bgmState.currentTrackId === track.id
+                      return (
+                        <button
+                          key={track.id}
+                          onClick={() => BgmSystem.setTrack(track.id)}
+                          className={`text-left px-2.5 py-1.5 rounded flex items-center justify-between transition-all ${
+                            isSelected
+                              ? 'bg-amber-900/50 border border-amber-500/60 text-amber-100'
+                              : 'bg-[#1e130d] hover:bg-[#342014] text-slate-300'
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[11px]">{track.title}</span>
+                            <span className="text-[10px] text-amber-100/60 line-clamp-1">{track.mood}</span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 사운드 효과 온오프 */}
           <button
             onClick={handleSoundToggle}
             className="pixel-button p-1.5 bg-[#2e2019] hover:bg-[#5a3c29] text-slate-300 hover:text-white transition-colors"
-            title={muted ? '음향 켜기' : '음향 끄기'}
+            title={muted ? '효과음 켜기' : '효과음 끄기'}
           >
             {muted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
           </button>
@@ -266,8 +452,20 @@ export const Header: React.FC = () => {
             <span>종묘상 & 시설 확충</span>
           </button>
 
-          {/* 6. 요리 및 식당: B2B 납품 3회 이상 달성 시 해금되어 버튼 노출 */}
-          {player.contractsFulfilled >= 3 && (
+          <button
+            onClick={() => setActiveTab('fishing')}
+            className={`flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+              activeTab === 'fishing'
+                ? 'bg-cyan-600 text-white shadow-md shadow-cyan-700/40'
+                : 'text-cyan-100 hover:bg-cyan-950/40 hover:text-white border border-cyan-500/30 bg-cyan-950/10'
+            }`}
+          >
+            <Anchor className="w-4 h-4 text-cyan-300" />
+            <span>늘봄 낚시터</span>
+          </button>
+
+          {/* 6. 요리 및 식당: 필요한 B2B 납품 횟수 달성 시 해금되어 버튼 노출 */}
+          {player.contractsFulfilled >= RESTAURANT_UNLOCK_CONTRACTS && (
             <button
               onClick={() => setActiveTab('restaurant')}
               className={`flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all relative ${

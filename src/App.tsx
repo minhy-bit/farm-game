@@ -6,9 +6,11 @@ import { WholesaleHub } from './components/WholesaleHub'
 import { ProcessingStorage } from './components/ProcessingStorage'
 import { ShopUpgrades } from './components/ShopUpgrades'
 import { RestaurantView } from './components/RestaurantView'
+import { FishingView } from './components/FishingView'
 import { AuthModal } from './components/AuthModal'
 import { useGame } from './context/GameContext'
 import { registerAgentController } from './agent/agentController'
+import { BgmSystem } from './utils/bgm'
 
 export const App: React.FC = () => {
   const {
@@ -20,6 +22,7 @@ export const App: React.FC = () => {
     contracts,
     upgrades,
     restaurant,
+    fishing,
     activeTab,
     setActiveTab,
     tillTile,
@@ -40,6 +43,10 @@ export const App: React.FC = () => {
     eatDish,
     buySeeds,
     buyUpgrade,
+    autoPlantSeeds,
+    buyFishingRod,
+    buyBait,
+    fish,
     processCrop,
     addFunds,
     giveSeeds,
@@ -47,6 +54,11 @@ export const App: React.FC = () => {
     forceDecayTile,
     forceRotCrop
   } = useGame()
+
+  // 최초 사용자 상호작용 시 배경음악 자동 재생 준비
+  useEffect(() => {
+    BgmSystem.initAutoStartOnInteraction()
+  }, [])
 
   // 에이전트 전역 컨트롤러 바인딩
   useEffect(() => {
@@ -60,7 +72,9 @@ export const App: React.FC = () => {
         contracts,
         upgrades,
         restaurant,
-        activeTab
+        fishing,
+        activeTab,
+        bgm: BgmSystem.getState()
       }),
       tillTile: (x: number, y: number) => {
         const tile = tiles.find(t => t.x === x && t.y === y)
@@ -96,13 +110,23 @@ export const App: React.FC = () => {
       eatDish,
       buySeeds,
       buyUpgrade,
+      autoPlantSeeds,
+      buyFishingRod,
+      buyBait,
+      fish,
       processCrop,
       switchTab: (tab) => setActiveTab(tab),
       addFunds,
       giveSeeds,
       giveCrops,
       forceDecayTile,
-      forceRotCrop
+      forceRotCrop,
+      playBgm: (trackId?: string) => BgmSystem.play(trackId),
+      stopBgm: () => BgmSystem.stop(),
+      toggleBgm: () => BgmSystem.toggle(),
+      setBgmVolume: (vol: number) => BgmSystem.setVolume(vol),
+      setBgmTrack: (trackId: string) => BgmSystem.setTrack(trackId),
+      getBgmState: () => BgmSystem.getState()
     })
   }, [
     player,
@@ -113,6 +137,7 @@ export const App: React.FC = () => {
     contracts,
     upgrades,
     restaurant,
+    fishing,
     activeTab,
     tillTile,
     waterTile,
@@ -132,6 +157,10 @@ export const App: React.FC = () => {
     eatDish,
     buySeeds,
     buyUpgrade,
+    autoPlantSeeds,
+    buyFishingRod,
+    buyBait,
+    fish,
     processCrop,
     setActiveTab,
     addFunds,
@@ -153,6 +182,7 @@ export const App: React.FC = () => {
         {activeTab === 'wholesale' && <WholesaleHub />}
         {activeTab === 'processing' && <ProcessingStorage />}
         {activeTab === 'shop' && <ShopUpgrades />}
+        {activeTab === 'fishing' && <FishingView />}
         {activeTab === 'restaurant' && <RestaurantView />}
       </main>
 

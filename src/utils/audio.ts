@@ -205,3 +205,7 @@ export const SoundSystem = {
     osc.stop(ctx.currentTime + 0.3)
   }
 }
+
+export { BgmSystem, BGM_TRACKS } from './bgm'
+export type { BgmTrackInfo, BgmState } from './bgm'
+

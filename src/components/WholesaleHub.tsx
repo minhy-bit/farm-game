@@ -1,6 +1,7 @@
 import React from 'react'
 import { useGame } from '../context/GameContext'
 import { CROPS_MAP } from '../data/crops'
+import { RESTAURANT_UNLOCK_CONTRACTS } from '../data/gameBalance'
 import {
   Truck,
   Building2,
@@ -66,27 +67,29 @@ export const WholesaleHub: React.FC = () => {
 
       {/* 2. 늘봄 식당 연계 해금 진행도 배너 */}
       <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-md ${
-        player.contractsFulfilled >= 3
+        player.contractsFulfilled >= RESTAURANT_UNLOCK_CONTRACTS
           ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
           : 'bg-slate-900/80 border-sky-600/40 text-slate-300'
       }`}>
         <div className="flex items-center space-x-3">
-          <span className="text-2xl">{player.contractsFulfilled >= 3 ? '🍽️' : '🔒'}</span>
+          <span className="text-2xl">{player.contractsFulfilled >= RESTAURANT_UNLOCK_CONTRACTS ? '🍽️' : '🔒'}</span>
           <div>
             <div className="font-bold flex items-center gap-2">
-              <span>{player.contractsFulfilled >= 3 ? '🎉 늘봄 식당 부지 매입 해금 완료!' : '늘봄 식당 & 요리 시스템 해금 과제'}</span>
+              <span>{player.contractsFulfilled >= RESTAURANT_UNLOCK_CONTRACTS ? '🎉 늘봄 식당 부지 매입 해금 완료!' : '늘봄 식당 & 요리 시스템 해금 과제'}</span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                player.contractsFulfilled >= 3
+                player.contractsFulfilled >= RESTAURANT_UNLOCK_CONTRACTS
                   ? 'bg-emerald-950 text-emerald-300 border border-emerald-600'
                   : 'bg-sky-950 text-sky-300 border border-sky-700'
               }`}>
-                {player.contractsFulfilled >= 3 ? '해금 완료 (3/3)' : `진행도: ${player.contractsFulfilled} / 3회`}
+                {player.contractsFulfilled >= RESTAURANT_UNLOCK_CONTRACTS
+                  ? `해금 완료 (${RESTAURANT_UNLOCK_CONTRACTS}/${RESTAURANT_UNLOCK_CONTRACTS})`
+                  : `진행도: ${player.contractsFulfilled} / ${RESTAURANT_UNLOCK_CONTRACTS}회`}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              {player.contractsFulfilled >= 3
+              {player.contractsFulfilled >= RESTAURANT_UNLOCK_CONTRACTS
                 ? '축하합니다! 상단 메뉴의 [늘봄 식당] 탭에서 식당 부지를 인수하고 주방 조리기구를 구비하여 요리를 시작하세요.'
-                : `B2B 대량 납품을 총 3회 완료하면 상단 탭에 [늘봄 식당] 버튼이 나타나 식당을 개업하고 요리를 할 수 있습니다. (${Math.max(0, 3 - player.contractsFulfilled)}회 남음)`}
+                : `B2B 대량 납품을 총 ${RESTAURANT_UNLOCK_CONTRACTS}회 완료하면 상단 탭에 [늘봄 식당] 버튼이 나타나 식당을 개업하고 요리를 할 수 있습니다. (${Math.max(0, RESTAURANT_UNLOCK_CONTRACTS - player.contractsFulfilled)}회 남음)`}
             </p>
           </div>
         </div>
