@@ -27,3 +27,7 @@ dist-ssr/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Windows batch scripts
+*.bat
+농사게임_바로접속.bat
